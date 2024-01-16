@@ -49,6 +49,7 @@ import org.apache.doris.catalog.external.ExternalTable;
 import org.apache.doris.catalog.external.HMSExternalTable;
 import org.apache.doris.catalog.external.IcebergExternalTable;
 import org.apache.doris.catalog.external.JdbcExternalTable;
+import org.apache.doris.catalog.external.LakeSoulExternalTable;
 import org.apache.doris.catalog.external.MaxComputeExternalTable;
 import org.apache.doris.catalog.external.PaimonExternalTable;
 import org.apache.doris.common.UserException;
@@ -179,6 +180,7 @@ import org.apache.doris.planner.external.hudi.HudiScanNode;
 import org.apache.doris.planner.external.iceberg.IcebergScanNode;
 import org.apache.doris.planner.external.jdbc.JdbcScanNode;
 import org.apache.doris.planner.external.odbc.OdbcScanNode;
+import org.apache.doris.planner.external.lakesoul.LakeSoulScanNode;
 import org.apache.doris.planner.external.paimon.PaimonScanNode;
 import org.apache.doris.statistics.StatisticConstants;
 import org.apache.doris.tablefunction.TableValuedFunctionIf;
@@ -491,6 +493,9 @@ public class PhysicalPlanTranslator extends DefaultPlanVisitor<PlanFragment, Pla
             scanNode = new PaimonScanNode(context.nextPlanNodeId(), tupleDescriptor, false);
         } else if (table instanceof MaxComputeExternalTable) {
             scanNode = new MaxComputeScanNode(context.nextPlanNodeId(), tupleDescriptor, false);
+        } else if (table instanceof LakeSoulExternalTable) {
+            scanNode = new LakeSoulScanNode(context.nextPlanNodeId(), tupleDescriptor, false);
+            ((LakeSoulScanNode) scanNode).setSelectedPartitions(fileScan.getSelectedPartitions());
         } else {
             throw new RuntimeException("do not support table type " + table.getType());
         }

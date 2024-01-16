@@ -612,6 +612,7 @@ enum TTableType {
     JDBC_TABLE,
     TEST_EXTERNAL_TABLE,
     MAX_COMPUTE_TABLE,
+    LAKESOUL_TABLE,
 }
 
 enum TKeysType {
