@@ -178,7 +178,7 @@ under the License.
             <artifactId>javax.servlet-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.doris</groupId>
+            <groupId>com.sleepycat</groupId>
             <artifactId>je</artifactId>
         </dependency>
         <!-- https://mvnrepository.com/artifact/de.jflex/jflex -->
