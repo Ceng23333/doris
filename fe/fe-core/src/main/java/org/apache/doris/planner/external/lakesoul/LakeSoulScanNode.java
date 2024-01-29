@@ -24,10 +24,12 @@ import org.apache.doris.catalog.TableIf;
 import org.apache.doris.catalog.external.LakeSoulExternalTable;
 import org.apache.doris.common.DdlException;
 import org.apache.doris.common.UserException;
+import org.apache.doris.common.util.LocationPath;
 import org.apache.doris.nereids.trees.plans.logical.LogicalFileScan;
 import org.apache.doris.planner.PlanNodeId;
 import org.apache.doris.planner.external.FileQueryScanNode;
 import org.apache.doris.planner.external.TableFormatType;
+import org.apache.doris.planner.external.hudi.HudiSplit;
 import org.apache.doris.spi.Split;
 import org.apache.doris.statistics.StatisticalType;
 import org.apache.doris.thrift.TFileFormatType;
@@ -43,11 +45,7 @@ import com.dmetasoul.lakesoul.meta.entity.TableInfo;
 import lombok.Setter;
 import org.apache.hadoop.fs.Path;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class LakeSoulScanNode extends FileQueryScanNode {
 
@@ -82,8 +80,8 @@ public class LakeSoulScanNode extends FileQueryScanNode {
 
     @Override
     protected TFileType getLocationType(String location) throws UserException {
-        return getTFileType(location).orElseThrow(() ->
-                new DdlException("Unknown file location " + location + " for iceberg table " + table.getTableName()));
+        return Optional.ofNullable(LocationPath.getTFileType(location)).orElseThrow(() ->
+            new DdlException("Unknown file location " + location + " for lakesoul table "));
     }
 
     @Override
@@ -106,7 +104,14 @@ public class LakeSoulScanNode extends FileQueryScanNode {
         return lakeSoulExternalTable.getHadoopProperties();
     }
 
-    public static void setLakeSoulParams(TFileRangeDesc rangeDesc, LakeSoulSplit lakeSoulSplit) {
+    @Override
+    protected void setScanParams(TFileRangeDesc rangeDesc, Split split) {
+        if (split instanceof LakeSoulSplit) {
+            setLakeSoulParams(rangeDesc, (LakeSoulSplit) split);
+        }
+    }
+
+    public void setLakeSoulParams(TFileRangeDesc rangeDesc, LakeSoulSplit lakeSoulSplit) {
         TTableFormatFileDesc tableFormatFileDesc = new TTableFormatFileDesc();
         tableFormatFileDesc.setTableFormatType(lakeSoulSplit.getTableFormatType().value());
         TLakeSoulFileDesc fileDesc = new TLakeSoulFileDesc();
