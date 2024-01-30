@@ -23,16 +23,33 @@ import lombok.Data;
 import org.apache.hadoop.fs.Path;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class LakeSoulSplit extends FileSplit {
 
-    public LakeSoulSplit(Path path, long start, long length, long fileLength, String[] hosts,
+    public LakeSoulSplit(List<String> paths,
+            List<String> primaryKeys,
+            Map<String, String> partitionDesc,
+            String tableSchema,
+            long start,
+            long length,
+            long fileLength,
+            String[] hosts,
             List<String> partitionValues) {
-        super(path, start, length, fileLength, hosts, partitionValues);
+        super(new Path(paths.get(0)), start, length, fileLength, hosts, partitionValues);
+        this.paths = paths;
+        this.primaryKeys = primaryKeys;
+        this.partitionDesc = partitionDesc;
+        this.tableSchema = tableSchema;
     }
 
-    private List<String> lakeSoulColumnNames;
-    private String tableSchema;
+    final private List<String> paths;
+
+    final private List<String> primaryKeys;
+
+    final private Map<String, String> partitionDesc;
+
+    final private String tableSchema;
 }
 

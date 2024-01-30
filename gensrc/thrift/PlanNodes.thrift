@@ -334,9 +334,10 @@ struct THudiFileDesc {
 }
 
 struct TLakeSoulFileDesc {
-    1: optional string base_path;
-    2: optional list<string> column_names;
-    3: optional string table_schema;
+    1: optional list<string> file_paths;
+    2: optional list<string> primary_keys;
+    3: optional list<string> partition_descs;
+    4: optional string table_schema;
 }
 
 struct TTransactionalHiveDeleteDeltaDesc {

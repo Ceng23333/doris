@@ -63,6 +63,7 @@
 #include "vec/exec/format/table/iceberg_reader.h"
 #include "vec/exec/format/table/max_compute_jni_reader.h"
 #include "vec/exec/format/table/paimon_reader.h"
+#include "vec/exec/format/table/lakesoul_jni_reader.h"
 #include "vec/exec/format/table/transactional_hive_reader.h"
 #include "vec/exec/format/wal/wal_reader.h"
 #include "vec/exec/scan/new_file_scan_node.h"
@@ -781,6 +782,12 @@ Status VFileScanner::_get_next_reader() {
                                                            _file_slot_descs, _state, _profile);
                 init_status =
                         ((HudiJniReader*)_cur_reader.get())->init_reader(_colname_to_value_range);
+            } else if (range.__isset.table_format_params &&
+                       range.table_format_params.table_format_type == "lakesoul") {
+                _cur_reader = LakeSoulJniReader::create_unique( range.table_format_params.lakesoul_params,
+                                                           _file_slot_descs, _state, _profile);
+                init_status =
+                        ((LakeSoulJniReader*)_cur_reader.get())->init_reader(_colname_to_value_range);
             }
             break;
         }
