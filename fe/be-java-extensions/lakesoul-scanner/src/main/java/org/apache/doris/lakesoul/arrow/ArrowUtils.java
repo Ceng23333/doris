@@ -55,12 +55,17 @@ public class ArrowUtils {
                 break;
             case "struct":
                 hiveType.append("<");
+                boolean first = true;
                 for (Field child: children) {
+                    if (!first) {
+                        hiveType.append(",");
+                    } else {
+                        first = false;
+                    }
                     hiveType.append(child.getName()).append(":").append(hiveTypeFromArrowField(child));
                 }
                 hiveType.append(">");
                 break;
-            default:
         }
         return hiveType.toString();
     }

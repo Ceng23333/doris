@@ -36,15 +36,22 @@ import java.util.List;
 public class ArrowJniScanner extends JniScanner {
 
     private static final Logger LOG = Logger.getLogger(ArrowJniScanner.class);
-    private final VectorSchemaRoot batch;
     private final BufferAllocator allocator;
-    private int mockRows = 12;
-    private int readRows = 0;
+
+    public ArrowJniScanner(BufferAllocator allocator) {
+        this.allocator = allocator;
+    }
 
     public ArrowJniScanner(BufferAllocator allocator, VectorSchemaRoot batch) {
-        this.allocator = allocator;
-        this.batch = batch;
+        this(allocator);
+        batchSize = batch.getRowCount();
+        initTableInfo(batch.getSchema(), batchSize);
+        vectorTable = loadVectorSchemaRoot(batch);
+    }
+
+    public VectorTable loadVectorSchemaRoot(VectorSchemaRoot batch) {
         Schema schema = batch.getSchema();
+        int batchSize = batch.getRowCount();
         List<Field> fields = schema.getFields();
 
         ColumnType[] columnTypes = new ColumnType[fields.size()];
@@ -53,45 +60,54 @@ public class ArrowJniScanner extends JniScanner {
             columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
             requiredFields[i] = fields.get(i).getName();
         }
+        BigIntVector metaAddressVector = new BigIntVector("metaAddress", allocator);
 
+        int metaSize = 1;
+        for (ColumnType type:columnTypes) {
+            metaSize += type.metaSize();
+        }
+        metaAddressVector.allocateNew(metaSize);
+        Integer idx = 0;
+
+        // batchSize
+        metaAddressVector.set(idx++, batchSize);
+
+        for (int i = 0; i < requiredFields.length; i++) {
+            ColumnType columnType = columnTypes[i];
+            idx = fillMetaAddressVector(batchSize, columnType, metaAddressVector, idx, batch.getVector(i));
+        }
+
+        return VectorTable.createReadableTable(columnTypes, requiredFields, metaAddressVector.getDataBufferAddress());
+
+    }
+
+    protected void initTableInfo(Schema schema, int batchSize) {
+        List<Field> fields = schema.getFields();
+
+        ColumnType[] columnTypes = new ColumnType[fields.size()];
+        String[] requiredFields = new String[fields.size()];
+        for (int i = 0; i < fields.size(); i++) {
+            columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
+            requiredFields[i] = fields.get(i).getName();
+        }
         ScanPredicate[] predicates = new ScanPredicate[0];
 
-        initTableInfo(columnTypes, requiredFields, predicates, batch.getRowCount());
+        super.initTableInfo(columnTypes, requiredFields, predicates, batchSize);
     }
 
-    @Override
-    protected void initTableInfo(ColumnType[] requiredTypes, String[] requiredFields, ScanPredicate[] predicates,
-                                 int batchSize) {
-        super.initTableInfo(requiredTypes, requiredFields, predicates, batchSize);
-        int numCol = requiredFields.length;
-
-        BigIntVector vector = new BigIntVector("metaAddress", allocator);
-
-        vector.allocateNew(3 * numCol + 1);
-        Integer idx = 0;
-        // num rows
-        vector.set(idx++, batch.getRowCount());
-        for (int i = 0; i < requiredTypes.length; i++) {
-            ColumnType columnType = requiredTypes[i];
-            idx = fillMetaAddressVector(batchSize, columnType, false, vector, idx, batch.getVector(i));
-
-        }
-        vectorTable = VectorTable.createReadableTable(requiredTypes, requiredFields, vector.getDataBufferAddress());
-    }
-
-    private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, boolean isComplexType,  BigIntVector vector, Integer idx, ValueVector valueVector) {
+    private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, BigIntVector metaAddressVector, Integer offset, ValueVector valueVector) {
         // nullMap
         if (valueVector.getField().isNullable()) {
-            vector.set(idx++, ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, allocator).memoryAddress());
+            metaAddressVector.set(offset++, ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, allocator).memoryAddress());
         } else {
-            vector.set(idx++, 0);
+            metaAddressVector.set(offset++, 0);
         }
 
         if (columnType.isComplexType()) {
             if (!columnType.isStruct()) {
                 // set offset buffer
                 ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-                vector.set(idx++, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, true).memoryAddress());
+                metaAddressVector.set(offset++, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, true).memoryAddress());
             }
 
             // set data buffer
@@ -104,23 +120,22 @@ public class ArrowJniScanner extends JniScanner {
                 } else if (valueVector instanceof StructVector) {
                     childrenVector = ((StructVector) valueVector).getVectorById(i);
                 }
-                idx = fillMetaAddressVector(batchSize, columnType.getChildTypes().get(i), true, vector, idx, childrenVector);
+                offset = fillMetaAddressVector(batchSize, columnType.getChildTypes().get(i), metaAddressVector, offset, childrenVector);
             }
 
         } else if (columnType.isStringType()) {
             // set offset buffer
             ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-            vector.set(idx++,  ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, isComplexType).memoryAddress());
+            metaAddressVector.set(offset++,  ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, false).memoryAddress());
 
             // set data buffer
-            vector.set(idx++,  ((VarCharVector) valueVector).getDataBufferAddress());
+            metaAddressVector.set(offset++,  ((VarCharVector) valueVector).getDataBufferAddress());
 
         } else {
             // set data buffer
-            vector.set(idx++,  ((FieldVector) valueVector).getDataBufferAddress());
+            metaAddressVector.set(offset++,  ((FieldVector) valueVector).getDataBufferAddress());
         }
-
-        return idx;
+        return offset;
     }
 
     @Override

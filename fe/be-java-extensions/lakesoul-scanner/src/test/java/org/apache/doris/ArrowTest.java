@@ -1,5 +1,6 @@
 package org.apache.doris;
 
+import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.*;
@@ -9,6 +10,7 @@ import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.complex.impl.NullableStructWriter;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
 import org.apache.arrow.vector.complex.writer.IntWriter;
+import org.apache.arrow.vector.complex.writer.VarCharWriter;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
@@ -33,21 +35,6 @@ public class ArrowTest {
         BufferAllocator allocator = new RootAllocator();
         ArrowJniScanner scanner = new ArrowJniScanner(allocator, createVectorSchemaRoot(allocator));
         scanner.open();
-//        long metaAddress = 0;
-//        do {
-//            metaAddress = scanner.getNextBatchMeta();
-//            if (metaAddress != 0) {
-//                long rows = OffHeap.getLong(null, metaAddress);
-//                Assert.assertEquals(3, rows);
-//
-//                VectorTable restoreTable = VectorTable.createReadableTable(scanner.getTable().getColumnTypes(),
-//                    scanner.getTable().getFields(), metaAddress);
-//                System.out.println(restoreTable.dump((int) rows));
-//                // Restored table is release by the origin table.
-//            }
-////            scanner.resetTable();
-//        } while (metaAddress != 0);
-//        scanner.releaseTable();
         scanner.close();
     }
 
@@ -57,24 +44,27 @@ public class ArrowTest {
                 new Field("int",  FieldType.nullable(new ArrowType.Int(32, true)), null),
                 new Field("utf8",  FieldType.nullable(new ArrowType.Utf8()), null),
                 new Field("list", FieldType.nullable(new ArrowType.List()),
-                    Collections.singletonList(new Field("list_int", FieldType.nullable(new ArrowType.Int(32, true)), null))),
+                    Collections.singletonList(new Field("int", FieldType.nullable(new ArrowType.Int(32, true)), null))),
                 new Field("struct", FieldType.nullable(new ArrowType.Struct()),
-                    Arrays.asList(new Field(STRUCT_INT_CHILD, FieldType.nullable(new ArrowType.Int(32, true)), null)
-                        ))
+                    Arrays.asList(
+                        new Field(STRUCT_INT_CHILD, FieldType.nullable(new ArrowType.Int(32, true)), null),
+                        new Field(STRUCT_UTF8_CHILD, FieldType.nullable(new ArrowType.Utf8()), null)
+                    )
+                )
             )
         );
         VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
         int batchSize = 16;
         root.setRowCount(batchSize);
         for (int idx=0; idx < schema.getFields().size(); idx ++) {
-            setValue(root, root.getVector(idx), idx, batchSize);
+            setValue(allocator, root, root.getVector(idx), idx, batchSize);
         }
 
         System.out.println(root.contentToTSVString());
         return root;
     }
 
-    private static void setValue(VectorSchemaRoot root, FieldVector fieldVector, int columnIdx, int batchSize) {
+    private static void setValue(BufferAllocator allocator, VectorSchemaRoot root, FieldVector fieldVector, int columnIdx, int batchSize) {
         if (fieldVector instanceof TinyIntVector) {
             TinyIntVector vector = (TinyIntVector) fieldVector;
             vector.allocateNew(batchSize);
@@ -208,12 +198,16 @@ public class ArrowTest {
             StructVector vector = (StructVector) fieldVector;
             NullableStructWriter writer = vector.getWriter();
             IntWriter intWriter = writer.integer(STRUCT_INT_CHILD);
-//            VarCharWriter varCharWriter = writer.varChar(STRUCT_UTF8_CHILD);
+            VarCharWriter varCharWriter = writer.varChar(STRUCT_UTF8_CHILD);
             for (int i = 0; i < batchSize; i++) {
                 writer.setPosition(i);
                 writer.start();
                 intWriter.writeInt(columnIdx * 7 + i * 3);
-//                varCharWriter.writeVarChar(new Text(String.valueOf(columnIdx * 101 + i * 3)));
+
+                byte[] bytes = new Text(String.valueOf(columnIdx * 101 + i * 3)).getBytes();
+                ArrowBuf buf = allocator.buffer(bytes.length);
+                buf.writeBytes(bytes);
+                varCharWriter.writeVarChar(0, bytes.length, buf);
                 writer.end();
             }
 
