@@ -17,27 +17,32 @@
 
 package org.apache.doris.lakesoul.arrow;
 
-import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.memory.ArrowBuf;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.complex.ListVector;
+import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.doris.common.jni.JniScanner;
 import org.apache.doris.common.jni.vec.ColumnType;
-import org.apache.doris.common.jni.vec.ColumnValueConverter;
 import org.apache.doris.common.jni.vec.ScanPredicate;
+import org.apache.doris.common.jni.vec.VectorTable;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 public class ArrowJniScanner extends JniScanner {
+
     private static final Logger LOG = Logger.getLogger(ArrowJniScanner.class);
     private final VectorSchemaRoot batch;
-
-    private int mockRows = 10;
+    private final BufferAllocator allocator;
+    private int mockRows = 12;
     private int readRows = 0;
 
-    public ArrowJniScanner(VectorSchemaRoot batch) {
+    public ArrowJniScanner(BufferAllocator allocator, VectorSchemaRoot batch) {
+        this.allocator = allocator;
         this.batch = batch;
         Schema schema = batch.getSchema();
         List<Field> fields = schema.getFields();
@@ -45,7 +50,7 @@ public class ArrowJniScanner extends JniScanner {
         ColumnType[] columnTypes = new ColumnType[fields.size()];
         String[] requiredFields = new String[fields.size()];
         for (int i = 0; i < fields.size(); i++) {
-            columnTypes[i] = ArrowUtils.columnTypeFromArrowField(fields.get(i));
+            columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
             requiredFields[i] = fields.get(i).getName();
         }
 
@@ -58,7 +63,64 @@ public class ArrowJniScanner extends JniScanner {
     protected void initTableInfo(ColumnType[] requiredTypes, String[] requiredFields, ScanPredicate[] predicates,
                                  int batchSize) {
         super.initTableInfo(requiredTypes, requiredFields, predicates, batchSize);
+        int numCol = requiredFields.length;
 
+        BigIntVector vector = new BigIntVector("metaAddress", allocator);
+
+        vector.allocateNew(3 * numCol + 1);
+        Integer idx = 0;
+        // num rows
+        vector.set(idx++, batch.getRowCount());
+        for (int i = 0; i < requiredTypes.length; i++) {
+            ColumnType columnType = requiredTypes[i];
+            idx = fillMetaAddressVector(batchSize, columnType, false, vector, idx, batch.getVector(i));
+
+        }
+        vectorTable = VectorTable.createReadableTable(requiredTypes, requiredFields, vector.getDataBufferAddress());
+    }
+
+    private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, boolean isComplexType,  BigIntVector vector, Integer idx, ValueVector valueVector) {
+        // nullMap
+        if (valueVector.getField().isNullable()) {
+            vector.set(idx++, ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, allocator).memoryAddress());
+        } else {
+            vector.set(idx++, 0);
+        }
+
+        if (columnType.isComplexType()) {
+            if (!columnType.isStruct()) {
+                // set offset buffer
+                ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
+                vector.set(idx++, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, true).memoryAddress());
+            }
+
+            // set data buffer
+            List<ColumnType> children = columnType.getChildTypes();
+            for (int i = 0; i < children.size(); ++i) {
+
+                ValueVector childrenVector = null;
+                if (valueVector instanceof ListVector) {
+                    childrenVector = ((ListVector) valueVector).getDataVector();
+                } else if (valueVector instanceof StructVector) {
+                    childrenVector = ((StructVector) valueVector).getVectorById(i);
+                }
+                idx = fillMetaAddressVector(batchSize, columnType.getChildTypes().get(i), true, vector, idx, childrenVector);
+            }
+
+        } else if (columnType.isStringType()) {
+            // set offset buffer
+            ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
+            vector.set(idx++,  ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, isComplexType).memoryAddress());
+
+            // set data buffer
+            vector.set(idx++,  ((VarCharVector) valueVector).getDataBufferAddress());
+
+        } else {
+            // set data buffer
+            vector.set(idx++,  ((FieldVector) valueVector).getDataBufferAddress());
+        }
+
+        return idx;
     }
 
     @Override
@@ -67,23 +129,11 @@ public class ArrowJniScanner extends JniScanner {
 
     @Override
     public void close() throws IOException {
-
+        System.out.println(vectorTable.dump(batchSize));
     }
 
     @Override
     public int getNext() throws IOException {
-        if (readRows == mockRows) {
-            return 0;
-        }
-        int batchSize = batch.getRowCount();
-        int rows = Math.min(batchSize, mockRows - readRows);
-
-        int numColumn = batch.getFieldVectors().size();
-        for (int i = 0; i < numColumn; i++) {
-            System.out.println(i);
-            vectorTable.appendData(i, new Object[]{batch.getVector(i)}, new ArrowColumnValueConverter(rows), batch.getSchema().getFields().get(i).isNullable());
-        }
-        readRows += rows;
-        return rows;
+        return 0;
     }
 }

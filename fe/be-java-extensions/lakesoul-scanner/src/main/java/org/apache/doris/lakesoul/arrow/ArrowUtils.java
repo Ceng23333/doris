@@ -1,15 +1,68 @@
 package org.apache.doris.lakesoul.arrow;
 
+import org.apache.arrow.memory.ArrowBuf;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
-import org.apache.doris.common.jni.vec.ColumnType;
-import org.apache.doris.thrift.TPrimitiveType;
+import org.apache.arrow.vector.util.DataSizeRoundingUtil;
+
+import java.util.List;
+
+import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class ArrowUtils {
+    public static ArrowBuf loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
+                                              final int valueCount,
+                                              final BufferAllocator allocator) {
+        ArrowBuf newBuffer = allocator.buffer(DataSizeRoundingUtil.roundUpTo8Multiple(valueCount));
+        for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx+=8, sourceIdx++) {
+            byte sourceByte = (byte) ~sourceValidityBuffer.getByte(sourceIdx);
+            for (int i = 0; i < 8; i++) {
+                newBuffer.writeByte(sourceByte & 1);
+                sourceByte >>= 1;
+            }
+        }
+        return newBuffer;
+    }
 
-    public static ColumnType columnTypeFromArrowField(Field field) {
-        String hiveType = field.getType().accept(ArrowTypeToHiveTypeConverter.INSTANCE);
-        return ColumnType.parseType(field.getName(), hiveType);
+    public static ArrowBuf loadOffsetBuffer(final ArrowBuf sourceOffsetBuffer,
+                                            final int valueCount,
+                                            final BufferAllocator allocator,
+                                            final boolean isComplexType) {
+        int length = valueCount << 3 ;
+        if (isComplexType) length <<= 1;
+        ArrowBuf newBuffer = allocator.buffer(length);
+        for (int sourceIdx = 1; sourceIdx <= valueCount; sourceIdx++) {
+
+            int sourceInt = sourceOffsetBuffer.getInt((long) sourceIdx << 2);
+            if (isComplexType) {
+                newBuffer.writeLong(sourceInt);
+            } else {
+                newBuffer.writeInt(sourceInt);
+            }
+        }
+        return newBuffer;
+    }
+
+    public static String hiveTypeFromArrowField(Field field) {
+        StringBuilder hiveType = new StringBuilder(field.getType().accept(ArrowTypeToHiveTypeConverter.INSTANCE));
+        List<Field> children = field.getChildren();
+        switch (hiveType.toString()) {
+            case "array":
+                checkArgument(children.size() == 1,
+                    "Lists have one child Field. Found: %s", children.isEmpty() ? "none" : children);
+                hiveType.append("<").append(hiveTypeFromArrowField(children.get(0))).append(">");
+                break;
+            case "struct":
+                hiveType.append("<");
+                for (Field child: children) {
+                    hiveType.append(child.getName()).append(":").append(hiveTypeFromArrowField(child));
+                }
+                hiveType.append(">");
+                break;
+            default:
+        }
+        return hiveType.toString();
     }
 
     private static class ArrowTypeToHiveTypeConverter
@@ -164,116 +217,4 @@ public class ArrowUtils {
     }
 
 
-    public static class ArrowTypeToTPrimitiveTypeConverter
-        implements ArrowType.ArrowTypeVisitor<TPrimitiveType> {
-
-        public static final ArrowTypeToTPrimitiveTypeConverter INSTANCE =
-            new ArrowTypeToTPrimitiveTypeConverter();
-
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Null type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Struct type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.List type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.LargeList type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.FixedSizeList type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Union type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Map type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Int type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.FloatingPoint type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Utf8 type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.LargeUtf8 type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Binary type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.LargeBinary type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.FixedSizeBinary type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Bool type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Decimal type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Date type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Time type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Timestamp type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Interval type) {
-            return null;
-        }
-
-        @Override
-        public TPrimitiveType visit(ArrowType.Duration type) {
-            return null;
-        }
-    }
 }
