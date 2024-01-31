@@ -25,6 +25,7 @@ import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.doris.common.jni.JniScanner;
+import org.apache.doris.common.jni.utils.OffHeap;
 import org.apache.doris.common.jni.vec.ColumnType;
 import org.apache.doris.common.jni.vec.ScanPredicate;
 import org.apache.doris.common.jni.vec.VectorTable;
@@ -36,10 +37,12 @@ import java.util.List;
 public class ArrowJniScanner extends JniScanner {
 
     private static final Logger LOG = Logger.getLogger(ArrowJniScanner.class);
-    private final BufferAllocator allocator;
+    protected BufferAllocator allocator;
+
+    public ArrowJniScanner() {}
 
     public ArrowJniScanner(BufferAllocator allocator) {
-        this.allocator = allocator;
+        withAllocator(allocator);
     }
 
     public ArrowJniScanner(BufferAllocator allocator, VectorSchemaRoot batch) {
@@ -47,6 +50,10 @@ public class ArrowJniScanner extends JniScanner {
         batchSize = batch.getRowCount();
         initTableInfo(batch.getSchema(), batchSize);
         vectorTable = loadVectorSchemaRoot(batch);
+    }
+
+    public void withAllocator(BufferAllocator allocator) {
+        this.allocator = allocator;
     }
 
     public VectorTable loadVectorSchemaRoot(VectorSchemaRoot batch) {
@@ -60,24 +67,29 @@ public class ArrowJniScanner extends JniScanner {
             columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
             requiredFields[i] = fields.get(i).getName();
         }
-        BigIntVector metaAddressVector = new BigIntVector("metaAddress", allocator);
+
+//        BigIntVector metaAddressVector = new BigIntVector("metaAddress", allocator);
 
         int metaSize = 1;
         for (ColumnType type:columnTypes) {
             metaSize += type.metaSize();
         }
-        metaAddressVector.allocateNew(metaSize);
-        Integer idx = 0;
+        long metaAddress = OffHeap.allocateMemory((long) metaSize << 3);
+
+//        metaAddressVector.allocateNew(metaSize);
+
 
         // batchSize
-        metaAddressVector.set(idx++, batchSize);
+//        metaAddressVector.set(idx++, batchSize);
+        OffHeap.putLong(null, metaAddress, batchSize);
+        Integer idx = 1;
 
         for (int i = 0; i < requiredFields.length; i++) {
             ColumnType columnType = columnTypes[i];
-            idx = fillMetaAddressVector(batchSize, columnType, metaAddressVector, idx, batch.getVector(i));
+            idx = fillMetaAddressVector(batchSize, columnType, metaAddress, idx, batch.getVector(i));
         }
 
-        return VectorTable.createReadableTable(columnTypes, requiredFields, metaAddressVector.getDataBufferAddress());
+        return VectorTable.createReadableTable(columnTypes, requiredFields, metaAddress);
 
     }
 
@@ -95,19 +107,19 @@ public class ArrowJniScanner extends JniScanner {
         super.initTableInfo(columnTypes, requiredFields, predicates, batchSize);
     }
 
-    private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, BigIntVector metaAddressVector, Integer offset, ValueVector valueVector) {
+    private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, long metaAddress, Integer offset, ValueVector valueVector) {
         // nullMap
         if (valueVector.getField().isNullable()) {
-            metaAddressVector.set(offset++, ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, allocator).memoryAddress());
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize));
         } else {
-            metaAddressVector.set(offset++, 0);
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, 0);
         }
 
         if (columnType.isComplexType()) {
             if (!columnType.isStruct()) {
                 // set offset buffer
                 ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-                metaAddressVector.set(offset++, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, true).memoryAddress());
+                OffHeap.putLong(null, metaAddress + (offset++) * 8, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, true));
             }
 
             // set data buffer
@@ -120,20 +132,20 @@ public class ArrowJniScanner extends JniScanner {
                 } else if (valueVector instanceof StructVector) {
                     childrenVector = ((StructVector) valueVector).getVectorById(i);
                 }
-                offset = fillMetaAddressVector(batchSize, columnType.getChildTypes().get(i), metaAddressVector, offset, childrenVector);
+                offset = fillMetaAddressVector(batchSize, columnType.getChildTypes().get(i), metaAddress, offset, childrenVector);
             }
 
         } else if (columnType.isStringType()) {
             // set offset buffer
             ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-            metaAddressVector.set(offset++,  ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, allocator, false).memoryAddress());
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, false));
 
             // set data buffer
-            metaAddressVector.set(offset++,  ((VarCharVector) valueVector).getDataBufferAddress());
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, ((VarCharVector) valueVector).getDataBufferAddress());
 
         } else {
             // set data buffer
-            metaAddressVector.set(offset++,  ((FieldVector) valueVector).getDataBufferAddress());
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, ((FieldVector) valueVector).getDataBufferAddress());
         }
         return offset;
     }
@@ -144,7 +156,6 @@ public class ArrowJniScanner extends JniScanner {
 
     @Override
     public void close() throws IOException {
-        System.out.println(vectorTable.dump(batchSize));
     }
 
     @Override

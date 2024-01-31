@@ -1,47 +1,67 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package org.apache.doris.lakesoul.arrow;
 
 import org.apache.arrow.memory.ArrowBuf;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
-import org.apache.arrow.vector.util.DataSizeRoundingUtil;
+import org.apache.doris.common.jni.utils.OffHeap;
 
 import java.util.List;
 
 import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class ArrowUtils {
-    public static ArrowBuf loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
-                                              final int valueCount,
-                                              final BufferAllocator allocator) {
-        ArrowBuf newBuffer = allocator.buffer(DataSizeRoundingUtil.roundUpTo8Multiple(valueCount));
+    public static long loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
+                                              final int valueCount) {
+        long address = OffHeap.allocateMemory(valueCount);
+        long offset = 0;
         for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx+=8, sourceIdx++) {
-            byte sourceByte = (byte) ~sourceValidityBuffer.getByte(sourceIdx);
+            byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
             for (int i = 0; i < 8; i++) {
-                newBuffer.writeByte(sourceByte & 1);
+                OffHeap.putBoolean(null, address + offset, (sourceByte & 1) == 0);
+//                newBuffer.writeByte(sourceByte & 1);
                 sourceByte >>= 1;
+                offset ++;
             }
         }
-        return newBuffer;
+        return address;
     }
 
-    public static ArrowBuf loadOffsetBuffer(final ArrowBuf sourceOffsetBuffer,
+    public static long loadOffsetBuffer(final ArrowBuf sourceOffsetBuffer,
                                             final int valueCount,
-                                            final BufferAllocator allocator,
                                             final boolean isComplexType) {
         int length = valueCount << 3 ;
         if (isComplexType) length <<= 1;
-        ArrowBuf newBuffer = allocator.buffer(length);
+        long address = OffHeap.allocateMemory(length);
+        long offset = 0;
         for (int sourceIdx = 1; sourceIdx <= valueCount; sourceIdx++) {
 
             int sourceInt = sourceOffsetBuffer.getInt((long) sourceIdx << 2);
             if (isComplexType) {
-                newBuffer.writeLong(sourceInt);
+                OffHeap.putLong(null, address + offset, sourceInt);
+                offset +=8;
             } else {
-                newBuffer.writeInt(sourceInt);
+                OffHeap.putInt(null, address + offset, sourceInt);
+                offset +=4;
             }
         }
-        return newBuffer;
+        return address;
     }
 
     public static String hiveTypeFromArrowField(Field field) {
