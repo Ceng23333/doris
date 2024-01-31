@@ -44,7 +44,7 @@ ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-${TARGETARCH:-amd64} \
         PATH="/opt/apache-doris/be/bin:${PATH}"
 
 # apache-doris/be from doris release xxxx.tar.gz.please update the version in follows x.x.x.
-ADD resource/apache-doris-x.x.x-bin-${TARGETARCH:-amd64}/be /opt/apache-doris/be
+ADD resource/apache-doris/be /opt/apache-doris/be
 
 COPY resource/be_*.sh /opt/apache-doris/
 
