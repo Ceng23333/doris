@@ -17,6 +17,9 @@
 
 package org.apache.doris.planner.external.lakesoul;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.dmetasoul.lakesoul.meta.LakeSoulOptions;
 import org.apache.doris.analysis.TupleDescriptor;
 import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.catalog.PartitionKey;
@@ -44,6 +47,7 @@ import com.dmetasoul.lakesoul.meta.DataOperation;
 import com.dmetasoul.lakesoul.meta.entity.TableInfo;
 import lombok.Setter;
 import org.apache.hadoop.fs.Path;
+import shade.doris.hive.com.google.common.collect.Lists;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -115,36 +119,42 @@ public class LakeSoulScanNode extends FileQueryScanNode {
         tableFormatFileDesc.setLakesoulParams(fileDesc);
         rangeDesc.setTableFormatParams(tableFormatFileDesc);
     }
-
+    public static boolean isExistHashPartition(TableInfo tif) {
+        JSONObject tableProperties = JSON.parseObject(tif.getProperties());
+        if (tableProperties.containsKey(LakeSoulOptions.HASH_BUCKET_NUM()) &&
+            tableProperties.getString(LakeSoulOptions.HASH_BUCKET_NUM()).equals("-1")) {
+            return false;
+        } else {
+            return tableProperties.containsKey(LakeSoulOptions.HASH_BUCKET_NUM());
+        }
+    }
     protected List<Split> getSplits() throws UserException {
         List<Split> splits = new ArrayList<>();
-        List<String> tablePartitions = getPathPartitionKeys();
-        if (tablePartitions.size() > 0) {
-            boolean isPartitionPruned = selectedPartitions == null ? false : selectedPartitions.isPruned;
-            if (!isPartitionPruned) {
-                System.out.println("aaa");
+        Map<String, Map<Integer, List<String>>> splitByRangeAndHashPartition = new LinkedHashMap<>();
+        TableInfo tif = table;
+        DataFileInfo[] dfinfos = DataOperation.getTableDataInfo(table.getTableId());
+        for (DataFileInfo pif : dfinfos) {
+            if (isExistHashPartition(tif) && pif.file_bucket_id() != -1) {
+                splitByRangeAndHashPartition.computeIfAbsent(pif.range_partitions(), k -> new LinkedHashMap<>())
+                    .computeIfAbsent(pif.file_bucket_id(), v -> new ArrayList<>())
+                    .add(pif.path());
             } else {
-                this.totalPartitionNum = selectedPartitions.totalPartitionNum;
-                Collection<PartitionItem> partitionItems = selectedPartitions.selectedPartitions.values();
-                for (PartitionItem item : partitionItems) {
-                    List<PartitionKey> items = item.getItems();
-                    for (PartitionKey p : items) {
-                        System.out.println(p.toString());
-                    }
-                }
-
+                splitByRangeAndHashPartition.computeIfAbsent(pif.range_partitions(), k -> new LinkedHashMap<>())
+                    .computeIfAbsent(-1, v -> new ArrayList<>())
+                    .add(pif.path());
             }
-        } else {
-            DataFileInfo[] tableDataInfo = DataOperation.getTableDataInfo(table.getTableId());
-            for (DataFileInfo dataFileInfo : tableDataInfo) {
-                String filePath = dataFileInfo.path();
-                long fileSize = dataFileInfo.size();
+        }
+        List<String> pkKeys = Lists.newArrayList(table.getPartitions().split(";")[1].split(","));
+        List<String> raKeys = Lists.newArrayList(table.getPartitions().split(";")[0].split(","));
+
+        for (Map.Entry<String, Map<Integer, List<String>>> entry : splitByRangeAndHashPartition.entrySet()) {
+            for (Map.Entry<Integer, List<String>> split : entry.getValue().entrySet()) {
                 LakeSoulSplit lakeSoulSplit = new LakeSoulSplit(
-                    Collections.singletonList(filePath),
-                    new ArrayList<>(),
+                    split.getValue(),
+                    pkKeys,
                     new TreeMap<>(),
                     table.getTableSchema(),
-                    0, fileSize, fileSize,
+                    0, 0, 0,
                     new String[0], null);
                 lakeSoulSplit.setTableFormatType(TableFormatType.LAKESOUL);
                 splits.add(lakeSoulSplit);
