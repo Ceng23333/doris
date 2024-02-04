@@ -18,14 +18,13 @@
 package org.apache.doris.lakesoul;
 
 public class LakeSoulUtils {
-    public static String FILE_NAMES = "file_name";
-    public static String PRIMARY_KEYS = "primary_key";
-    public static String SCHEMA_JSON = "schema_json";
-    public static String PARTITION_DESC = "partitions";
+    public static String FILE_NAMES = "file_paths";
+    public static String PRIMARY_KEYS = "primary_keys";
+    public static String SCHEMA_JSON = "table_schema";
+    public static String PARTITION_DESC = "partition_descs";
+    public static String REQUIRED_FIELDS = "required_fields";
 
-    public static String FILE_LIST_DELIM = ";";
-    public static String PRIMARY_KEYS_DELIM = ";";
-    public static String PARTITIONS_DELIM = ";";
+    public static String LIST_DELIM = ";";
     public static String PARTITIONS_KV_DELIM = "=";
 
 }

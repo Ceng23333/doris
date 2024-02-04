@@ -21,20 +21,23 @@ import com.dmetasoul.lakesoul.LakeSoulArrowReader;
 import com.dmetasoul.lakesoul.lakesoul.io.NativeIOReader;
 import com.google.common.base.Preconditions;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.apache.doris.lakesoul.arrow.ArrowJniScanner;
+import org.apache.doris.common.jni.vec.ScanPredicate;
+import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.doris.lakesoul.LakeSoulUtils.*;
 
-public class LakeSoulJniScanner extends ArrowJniScanner {
+public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
 
     private final Map<String, String> params;
-    private NativeIOReader nativeIOReader;
 
     private transient LakeSoulArrowReader lakesoulArrowReader;
 
@@ -42,35 +45,53 @@ public class LakeSoulJniScanner extends ArrowJniScanner {
 
     private final int awaitTimeout;
 
-    public LakeSoulJniScanner(Map<String, String> params) {
+    private final int batchSize;
+
+    public LakeSoulJniScanner(int batchSize, Map<String, String> params) {
         this.params = params;
         awaitTimeout = 10000;
+        this.batchSize = batchSize;
     }
 
     @Override
     public void open() throws IOException {
-        nativeIOReader = new NativeIOReader();
+        NativeIOReader nativeIOReader = new NativeIOReader();
         withAllocator(nativeIOReader.getAllocator());
+        nativeIOReader.setBatchSize(batchSize);
 
         // add files
-        for (String file: params.get(FILE_NAMES).split(FILE_LIST_DELIM)) {
+        for (String file : params.get(FILE_NAMES).split(LIST_DELIM)) {
             nativeIOReader.addFile(file);
         }
 
         // set primary keys
         String primaryKeys = params.getOrDefault(PRIMARY_KEYS, "");
         if (!primaryKeys.isEmpty()) {
-            nativeIOReader.setPrimaryKeys(Arrays.stream(primaryKeys.split(PRIMARY_KEYS_DELIM)).collect(Collectors.toList()));
+            nativeIOReader.setPrimaryKeys(
+                Arrays.stream(primaryKeys.split(LIST_DELIM)).collect(Collectors.toList()));
         }
 
-        nativeIOReader.setSchema(Schema.fromJSON(params.get(SCHEMA_JSON)));
+        Schema schema = Schema.fromJSON(params.get(SCHEMA_JSON));
+        String[] requiredFieldNames = params.get(REQUIRED_FIELDS).split(LIST_DELIM);
 
-        for (String partitionKV:params.getOrDefault(PARTITION_DESC, "").split(PARTITIONS_DELIM)) {
+        List<Field> requiredFields = new ArrayList<>();
+        for (String fieldName : requiredFieldNames) {
+            requiredFields.add(schema.findField(fieldName));
+        }
+
+        requiredSchema = new Schema(requiredFields);
+
+        nativeIOReader.setSchema(requiredSchema);
+
+        for (String partitionKV : params.getOrDefault(PARTITION_DESC, "").split(LIST_DELIM)) {
             if (partitionKV.isEmpty()) break;
             String[] kv = partitionKV.split(PARTITIONS_KV_DELIM);
             Preconditions.checkArgument(kv.length == 2, "Invalid partition column = " + partitionKV);
             nativeIOReader.setDefaultColumnValue(kv[0], kv[1]);
         }
+
+        initTableInfo(params);
+
         nativeIOReader.initializeReader();
         lakesoulArrowReader = new LakeSoulArrowReader(nativeIOReader, awaitTimeout);
     }
@@ -87,10 +108,9 @@ public class LakeSoulJniScanner extends ArrowJniScanner {
     public int getNext() throws IOException {
         if (lakesoulArrowReader.hasNext()) {
             currentBatch = lakesoulArrowReader.nextResultVectorSchemaRoot();
-            batchSize = currentBatch.getRowCount();
-            initTableInfo(currentBatch.getSchema(), batchSize);
+            int rows = currentBatch.getRowCount();
             vectorTable = loadVectorSchemaRoot(currentBatch);
-            return batchSize;
+            return rows;
         } else {
             return 0;
         }

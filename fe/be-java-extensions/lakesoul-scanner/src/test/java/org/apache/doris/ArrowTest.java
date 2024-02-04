@@ -34,7 +34,7 @@ import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
 import org.apache.doris.common.jni.utils.OffHeap;
-import org.apache.doris.lakesoul.arrow.ArrowJniScanner;
+import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -51,7 +51,7 @@ public class ArrowTest {
         OffHeap.setTesting();
         BufferAllocator allocator = new RootAllocator();
         VectorSchemaRoot batch = createVectorSchemaRoot(allocator);
-        ArrowJniScanner scanner = new ArrowJniScanner(allocator, batch);
+        LakeSoulArrowJniScanner scanner = new LakeSoulArrowJniScanner(allocator, batch);
         scanner.open();
         scanner.close();
         batch.close();
