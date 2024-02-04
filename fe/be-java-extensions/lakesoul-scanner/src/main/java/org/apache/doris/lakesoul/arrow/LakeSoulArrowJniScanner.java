@@ -31,14 +31,18 @@ import org.apache.doris.common.jni.vec.ScanPredicate;
 import org.apache.doris.common.jni.vec.VectorTable;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class LakeSoulArrowJniScanner extends JniScanner {
+public class LakeSoulArrowJniScanner extends JniScanner {
 
     protected static final Logger LOG = Logger.getLogger(LakeSoulArrowJniScanner.class);
 
     protected BufferAllocator allocator;
+    private long  metaAddress = 0;
+    private ArrayList<Long> extraOffHeap;
 
     protected Schema requiredSchema;
 
@@ -46,9 +50,12 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
     }
 
     public LakeSoulArrowJniScanner(BufferAllocator allocator) {
+        metaAddress = 0;
+        extraOffHeap = new ArrayList();
         withAllocator(allocator);
     }
 
+    // for test
     public LakeSoulArrowJniScanner(BufferAllocator allocator, VectorSchemaRoot batch) {
         this(allocator);
         batchSize = batch.getRowCount();
@@ -66,7 +73,7 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
         for (ColumnType type : types) {
             metaSize += type.metaSize();
         }
-        long metaAddress = OffHeap.allocateMemory((long) metaSize << 3);
+        metaAddress = OffHeap.allocateMemory((long) metaSize << 3);
         OffHeap.putLong(null, metaAddress, batchSize);
         Integer idx = 1;
 
@@ -111,8 +118,9 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
                                           ValueVector valueVector) {
         // nullMap
         if (valueVector.getField().isNullable()) {
-            OffHeap.putLong(null, metaAddress + (offset++) * 8,
-                ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize));
+            long validityBuffer = ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize);
+            extraOffHeap.add(validityBuffer);
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, validityBuffer);
         } else {
             OffHeap.putLong(null, metaAddress + (offset++) * 8, 0);
         }
@@ -121,8 +129,9 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
             if (!columnType.isStruct()) {
                 // set offset buffer
                 ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-                OffHeap.putLong(null, metaAddress + (offset++) * 8,
-                    ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, true));
+                long offsetBuffer = ArrowUtils.loadComplexTypeOffsetBuffer(offsetBuf, batchSize);
+                extraOffHeap.add(offsetBuffer);
+                OffHeap.putLong(null, metaAddress + (offset++) * 8, offsetBuffer);
             }
 
             // set data buffer
@@ -144,8 +153,7 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
         } else if (columnType.isStringType()) {
             // set offset buffer
             ArrowBuf offsetBuf = valueVector.getOffsetBuffer();
-            OffHeap.putLong(null, metaAddress + (offset++) * 8,
-                ArrowUtils.loadOffsetBuffer(offsetBuf, batchSize, false));
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, offsetBuf.memoryAddress() + 4);
 
             // set data buffer
             OffHeap.putLong(null, metaAddress + (offset++) * 8, ((VarCharVector) valueVector).getDataBufferAddress());
@@ -155,5 +163,34 @@ public abstract class LakeSoulArrowJniScanner extends JniScanner {
             OffHeap.putLong(null, metaAddress + (offset++) * 8, ((FieldVector) valueVector).getDataBufferAddress());
         }
         return offset;
+    }
+
+    public String dump() {
+        return vectorTable.dump(batchSize);
+    }
+
+    @Override
+    public void open() throws IOException {
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (metaAddress != 0) {
+            OffHeap.freeMemory(metaAddress);
+        }
+    }
+
+    @Override
+    public int getNext() throws IOException {
+        return 0;
+    }
+
+    @Override
+    public void releaseTable() {
+        for (long address:extraOffHeap) {
+            OffHeap.freeMemory(address);
+        }
+        extraOffHeap.clear();
+        vectorTable = null;
     }
 }

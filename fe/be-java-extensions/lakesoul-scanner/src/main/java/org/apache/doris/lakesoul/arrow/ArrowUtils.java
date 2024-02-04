@@ -43,23 +43,17 @@ public class ArrowUtils {
         return address;
     }
 
-    public static long loadOffsetBuffer(final ArrowBuf sourceOffsetBuffer,
-                                            final int valueCount,
-                                            final boolean isComplexType) {
-        int length = valueCount << 3 ;
-        if (isComplexType) length <<= 1;
+    public static long loadComplexTypeOffsetBuffer(final ArrowBuf sourceOffsetBuffer,
+                                            final int valueCount) {
+        int length = valueCount << 4;
         long address = OffHeap.allocateMemory(length);
         long offset = 0;
         for (int sourceIdx = 1; sourceIdx <= valueCount; sourceIdx++) {
 
             int sourceInt = sourceOffsetBuffer.getInt((long) sourceIdx << 2);
-            if (isComplexType) {
-                OffHeap.putLong(null, address + offset, sourceInt);
-                offset +=8;
-            } else {
-                OffHeap.putInt(null, address + offset, sourceInt);
-                offset +=4;
-            }
+            OffHeap.putLong(null, address + offset, sourceInt);
+            offset +=8;
+
         }
         return address;
     }
