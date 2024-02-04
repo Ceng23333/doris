@@ -76,7 +76,8 @@ public class LakeSoulJniScanner extends ArrowJniScanner {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
+        super.close();
         releaseTable();
         if (lakesoulArrowReader != null) {
             lakesoulArrowReader.close();
@@ -115,9 +116,9 @@ public class LakeSoulJniScanner extends ArrowJniScanner {
 
     @Override
     public void releaseTable() {
+        super.releaseTable();
         if (currentBatch != null) {
             currentBatch.close();
         }
-        vectorTable = null;
     }
 }

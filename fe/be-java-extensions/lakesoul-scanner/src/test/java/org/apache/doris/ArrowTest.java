@@ -53,6 +53,7 @@ public class ArrowTest {
         VectorSchemaRoot batch = createVectorSchemaRoot(allocator);
         ArrowJniScanner scanner = new ArrowJniScanner(allocator, batch);
         scanner.open();
+        System.out.println(scanner.dump());
         scanner.close();
         batch.close();
         allocator.close();
