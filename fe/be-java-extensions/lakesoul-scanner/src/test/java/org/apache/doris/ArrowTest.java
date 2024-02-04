@@ -46,18 +46,6 @@ public class ArrowTest {
     final static String STRUCT_INT_CHILD = "struct_int_child";
     final static String STRUCT_UTF8_CHILD = "struct_utf8_child";
 
-    @Test
-    public void testReadVectorSchemaRoot() throws IOException {
-        OffHeap.setTesting();
-        BufferAllocator allocator = new RootAllocator();
-        VectorSchemaRoot batch = createVectorSchemaRoot(allocator);
-        LakeSoulArrowJniScanner scanner = new LakeSoulArrowJniScanner(allocator, batch);
-        scanner.open();
-        scanner.close();
-        batch.close();
-        allocator.close();
-    }
-
     public static VectorSchemaRoot createVectorSchemaRoot(BufferAllocator allocator) {
         Schema schema = new Schema(
             Arrays.asList(

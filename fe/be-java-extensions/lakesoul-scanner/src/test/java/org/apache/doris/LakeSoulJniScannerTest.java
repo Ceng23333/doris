@@ -32,14 +32,14 @@ public class LakeSoulJniScannerTest {
     public void testLakeSoulJniScanner() throws IOException {
         OffHeap.setTesting();
         HashMap<String, String> params = new HashMap<>();
-        params.put(LakeSoulUtils.FILE_NAMES, String.join(LakeSoulUtils.FILE_LIST_DELIM, Arrays.asList(
+        params.put(LakeSoulUtils.FILE_NAMES, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList(
             "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-1c90ae74-e3a4-42b6-8f96-d4bbae715afb_00000.c000.parquet",
             "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-50a130a4-332a-4688-9929-38347d507ef8_00000.c000.parquet",
             "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-81f69370-6318-4403-bd3b-ffebb651298e_00000.c000.parquet"
         )));
         params.put(
             LakeSoulUtils.PRIMARY_KEYS,
-            String.join(LakeSoulUtils.PRIMARY_KEYS_DELIM, Arrays.asList("hash1", "hash2"))
+            String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("hash1", "hash2"))
         );
 
         String schema = " {                      " +
@@ -85,7 +85,7 @@ public class LakeSoulJniScannerTest {
         params.put(LakeSoulUtils.SCHEMA_JSON, schema);
         params.put(LakeSoulUtils.PARTITION_DESC, "range=range");
 
-        LakeSoulJniScanner scanner = new LakeSoulJniScanner(params);
+        LakeSoulJniScanner scanner = new LakeSoulJniScanner(1024, params);
         scanner.open();
         long metaAddress = 0;
         do {

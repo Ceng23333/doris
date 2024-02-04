@@ -736,6 +736,7 @@ Status VFileScanner::_get_next_reader() {
         // create reader for specific format
         Status init_status;
         TFileFormatType::type format_type = _params->format_type;
+        LOG_INFO("format_type = {}", format_type);
         // JNI reader can only push down column value range
         bool push_down_predicates =
                 !_is_load && _params->format_type != TFileFormatType::FORMAT_JNI;
@@ -760,6 +761,7 @@ Status VFileScanner::_get_next_reader() {
         bool need_to_get_parsed_schema = false;
         switch (format_type) {
         case TFileFormatType::FORMAT_JNI: {
+            LOG_INFO("JNI format_type, table_format_type = {}", range.table_format_params.table_format_type);
             if (range.__isset.table_format_params &&
                 range.table_format_params.table_format_type == "max_compute") {
                 const auto* mc_desc = static_cast<const MaxComputeTableDescriptor*>(

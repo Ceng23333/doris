@@ -18,6 +18,7 @@
 #include <map>
 #include <ostream>
 
+#include "common/logging.h"
 #include "lakesoul_jni_reader.h"
 #include "runtime/descriptors.h"
 #include "runtime/runtime_state.h"
@@ -48,12 +49,14 @@ LakeSoulJniReader::LakeSoulJniReader(const TLakeSoulFileDesc& lakesoul_params,
 
     std::map<String, String> params = {
         {"query_id", print_id(_state->query_id())},
-        {"file_paths", join(_lakesoul_params.file_paths, ",")},
-        {"primary_keys", join(_lakesoul_params.primary_keys, ",")},
-        {"partition_descs", join(_lakesoul_params.partition_descs, ",")},
-        {"required_fields", join(required_fields, ",")},
+        {"file_paths", join(_lakesoul_params.file_paths, ";")},
+        {"primary_keys", join(_lakesoul_params.primary_keys, ";")},
+        {"partition_descs", join(_lakesoul_params.partition_descs, ";")},
+        {"required_fields", join(required_fields, ";")},
         {"table_schema", _lakesoul_params.table_schema},
     };
+
+    LOG_INFO("Create LakeSoulJniReader with params {}", params);
 
     _jni_connector = std::make_unique<JniConnector>("org/apache/doris/lakesoul/LakeSoulJniScanner", params,
                                                     required_fields);
