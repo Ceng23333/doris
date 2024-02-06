@@ -28,16 +28,24 @@ import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class ArrowUtils {
     public static long loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
-                                              final int valueCount) {
+                                          final int valueCount,
+                                          final boolean nullable) {
         long address = OffHeap.allocateMemory(valueCount);
-        long offset = 0;
-        for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx+=8, sourceIdx++) {
-            byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
-            for (int i = 0; i < 8; i++) {
-                OffHeap.putBoolean(null, address + offset, (sourceByte & 1) == 0);
+        if (nullable) {
+            long offset = 0;
+            for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx += 8, sourceIdx++) {
+                byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
+                for (int i = 0; i < 8; i++) {
+                    OffHeap.putBoolean(null, address + offset, (sourceByte & 1) == 0);
 //                newBuffer.writeByte(sourceByte & 1);
-                sourceByte >>= 1;
-                offset ++;
+                    sourceByte >>= 1;
+                    offset++;
+                    if (offset == valueCount) break;
+                }
+            }
+        } else {
+            for (int offset = 0; offset < valueCount; offset++) {
+                OffHeap.putBoolean(null, address + offset, false);
             }
         }
         return address;

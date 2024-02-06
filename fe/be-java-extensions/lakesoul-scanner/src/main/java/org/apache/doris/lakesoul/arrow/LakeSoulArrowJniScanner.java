@@ -132,13 +132,10 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, long metaAddress, Integer offset,
                                           ValueVector valueVector) {
         // nullMap
-        if (valueVector.getField().isNullable()) {
-            long validityBuffer = ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize);
-            extraOffHeap.add(validityBuffer);
-            OffHeap.putLong(null, metaAddress + (offset++) * 8, validityBuffer);
-        } else {
-            OffHeap.putLong(null, metaAddress + (offset++) * 8, 0);
-        }
+        long validityBuffer = ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, valueVector.getField().isNullable());
+        extraOffHeap.add(validityBuffer);
+        OffHeap.putLong(null, metaAddress + (offset++) * 8, validityBuffer);
+
 
         if (columnType.isComplexType()) {
             if (!columnType.isStruct()) {
