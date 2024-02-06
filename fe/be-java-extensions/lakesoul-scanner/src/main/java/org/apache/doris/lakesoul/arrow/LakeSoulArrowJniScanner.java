@@ -42,7 +42,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     protected BufferAllocator allocator;
     private long  metaAddress = 0;
-    private ArrayList<Long> extraOffHeap;
+    private ArrayList<Long> extraOffHeap = new ArrayList<>();
 
     protected Schema requiredSchema;
 
@@ -59,6 +59,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     public LakeSoulArrowJniScanner(BufferAllocator allocator, VectorSchemaRoot batch) {
         this(allocator);
         batchSize = batch.getRowCount();
+        initTableInfo(batch.getSchema(), batchSize);
         vectorTable = loadVectorSchemaRoot(batch);
     }
 
@@ -83,6 +84,20 @@ public class LakeSoulArrowJniScanner extends JniScanner {
         }
 
         return VectorTable.createReadableTable(types, fields, metaAddress);
+    }
+
+    protected void initTableInfo(Schema schema, int batchSize) {
+        List<Field> fields = schema.getFields();
+
+        ColumnType[] columnTypes = new ColumnType[fields.size()];
+        String[] requiredFields = new String[fields.size()];
+        for (int i = 0; i < fields.size(); i++) {
+            columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
+            requiredFields[i] = fields.get(i).getName();
+        }
+        ScanPredicate[] predicates = new ScanPredicate[0];
+
+        super.initTableInfo(columnTypes, requiredFields, predicates, batchSize);
     }
 
     protected void initTableInfo(Map<String, String> params) {
@@ -175,9 +190,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     @Override
     public void close() throws IOException {
-        if (metaAddress != 0) {
-            OffHeap.freeMemory(metaAddress);
-        }
+
     }
 
     @Override
@@ -187,6 +200,10 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     @Override
     public void releaseTable() {
+        if (metaAddress != 0) {
+            OffHeap.freeMemory(metaAddress);
+            metaAddress = 0;
+        }
         for (long address:extraOffHeap) {
             OffHeap.freeMemory(address);
         }

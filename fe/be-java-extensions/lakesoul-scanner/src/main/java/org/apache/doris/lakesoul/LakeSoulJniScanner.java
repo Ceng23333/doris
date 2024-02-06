@@ -48,6 +48,7 @@ public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
     private final int batchSize;
 
     public LakeSoulJniScanner(int batchSize, Map<String, String> params) {
+        super();
         this.params = params;
         awaitTimeout = 10000;
         this.batchSize = batchSize;
@@ -97,8 +98,7 @@ public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
     }
 
     @Override
-    public void close() throws IOException {
-        super.close();
+    public void close() {
         releaseTable();
         if (lakesoulArrowReader != null) {
             lakesoulArrowReader.close();

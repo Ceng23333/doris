@@ -84,6 +84,7 @@ public class LakeSoulJniScannerTest {
             " }";
         params.put(LakeSoulUtils.SCHEMA_JSON, schema);
         params.put(LakeSoulUtils.PARTITION_DESC, "range=range");
+        params.put(LakeSoulUtils.REQUIRED_FIELDS, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("range", "v1", "hash1", "v2", "hash2")));
 
         LakeSoulJniScanner scanner = new LakeSoulJniScanner(1024, params);
         scanner.open();
