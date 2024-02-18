@@ -17,6 +17,7 @@
 
 package org.apache.doris.catalog.external;
 
+import com.dmetasoul.lakesoul.meta.DBUtil;
 import com.dmetasoul.lakesoul.meta.entity.TableInfo;
 import com.google.common.collect.Lists;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
@@ -126,7 +127,9 @@ public class LakeSoulExternalTable extends ExternalTable {
 
     @Override
     public List<Column> initSchema() {
-        String tableSchema = ((LakeSoulExternalCatalog) catalog).getLakeSoulTable(dbName, name).getTableSchema();
+        TableInfo tableInfo = ((LakeSoulExternalCatalog) catalog).getLakeSoulTable(dbName, name);
+        String tableSchema = tableInfo.getTableSchema();
+        DBUtil.TablePartitionKeys partitionKeys = DBUtil.parseTableInfoPartitions(tableInfo.getPartitions());
         System.out.println(tableSchema);
         Schema schema;
         try {
@@ -137,10 +140,12 @@ public class LakeSoulExternalTable extends ExternalTable {
 
         List<Column> tmpSchema = Lists.newArrayListWithCapacity(schema.getFields().size());
         for (Field field : schema.getFields()) {
-            tmpSchema.add(new Column(new Column(field.getName(), arrowFiledToDorisType(field),
-                true, null, true,
+            boolean isKey = partitionKeys.primaryKeys.contains(field.getName()) || partitionKeys.rangeKeys.contains(field.getName());
+            tmpSchema.add(new Column(field.getName(), arrowFiledToDorisType(field),
+                isKey,
+                null, field.isNullable(),
                     field.getMetadata().getOrDefault("comment", null),
-                true, schema.getFields().indexOf(field))));
+                true, schema.getFields().indexOf(field)));
         }
         return tmpSchema;
     }
