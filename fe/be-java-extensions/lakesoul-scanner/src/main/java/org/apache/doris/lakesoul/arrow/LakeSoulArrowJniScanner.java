@@ -42,7 +42,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     protected BufferAllocator allocator;
     private long  metaAddress = 0;
-    private ArrayList<Long> extraOffHeap = new ArrayList<>();
+    private ArrayList<Long> extraOffHeap;
 
     protected Schema requiredSchema;
 
@@ -51,7 +51,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     public LakeSoulArrowJniScanner(BufferAllocator allocator) {
         metaAddress = 0;
-        extraOffHeap = new ArrayList();
+        extraOffHeap = new ArrayList<>();
         withAllocator(allocator);
     }
 

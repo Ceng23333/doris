@@ -23,7 +23,9 @@ import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.apache.doris.catalog.*;
+import org.apache.doris.catalog.Column;
+import org.apache.doris.catalog.ScalarType;
+import org.apache.doris.catalog.Type;
 import org.apache.doris.datasource.lakesoul.LakeSoulExternalCatalog;
 import org.apache.doris.thrift.TLakeSoulTable;
 import org.apache.doris.thrift.TTableDescriptor;
@@ -43,19 +45,32 @@ public class LakeSoulExternalTable extends ExternalTable {
     }
 
     private Type lakeSoulTypeToDorisType(ArrowType dt) {
-
-        if (dt instanceof ArrowType.Binary) {
+        if (dt instanceof ArrowType.Bool) {
             return Type.BOOLEAN;
         } else if (dt instanceof ArrowType.Int) {
-            if(((ArrowType.Int)dt).getIsSigned() && ((ArrowType.Int)dt).getBitWidth()==32) {return Type.INT;}
-        } else if (dt instanceof ArrowType.Int) {
-            if(((ArrowType.Int)dt).getIsSigned() && ((ArrowType.Int)dt).getBitWidth()==16) {return Type.SMALLINT;}
-        } else if (dt instanceof ArrowType.Int) {
-            if(((ArrowType.Int)dt).getIsSigned() && ((ArrowType.Int)dt).getBitWidth()==64) {return Type.BIGINT;}
+            ArrowType.Int type = (ArrowType.Int) dt;
+            switch (type.getBitWidth()) {
+                case 16:
+                    return Type.SMALLINT;
+                case 32:
+                    return Type.INT;
+                case 64:
+                    return Type.BIGINT;
+                default:
+                    throw new IllegalArgumentException("Invalid integer bit width: " + type.getBitWidth() +
+                        " for LakeSoul table: " + getTableIdentifier());
+            }
         } else if (dt instanceof ArrowType.FloatingPoint) {
-            if(((ArrowType.FloatingPoint)dt).getPrecision()== FloatingPointPrecision.SINGLE) {return Type.FLOAT;}
-        } else if (dt instanceof ArrowType.FloatingPoint) {
-            if(((ArrowType.FloatingPoint)dt).getPrecision()== FloatingPointPrecision.DOUBLE) {return Type.DOUBLE;}
+            ArrowType.FloatingPoint type = (ArrowType.FloatingPoint) dt;
+            switch (type.getPrecision()) {
+                case SINGLE:
+                    return Type.FLOAT;
+                case DOUBLE:
+                    return Type.DOUBLE;
+                default:
+                    throw new IllegalArgumentException("Invalid floating point precision: " + type.getPrecision() +
+                        " for LakeSoul table: " + getTableIdentifier());
+            }
         } else if (dt instanceof ArrowType.Utf8) {
             return Type.STRING;
         } else if (dt instanceof ArrowType.Decimal) {
@@ -66,7 +81,8 @@ public class LakeSoulExternalTable extends ExternalTable {
         } else if (dt instanceof ArrowType.Timestamp) {
             return ScalarType.createDatetimeV2Type(LAKESOUL_TIMESTAMP_SCALE_MS);
         }
-        throw new IllegalArgumentException("Cannot transform unknown type: " + dt);
+        throw new IllegalArgumentException("Cannot transform type " + dt + " to doris type" +
+            " for LakeSoul table " + getTableIdentifier());
     }
 
     @Override
@@ -74,7 +90,7 @@ public class LakeSoulExternalTable extends ExternalTable {
         List<Column> schema = getFullSchema();
         TLakeSoulTable tLakeSoulTable = new TLakeSoulTable(dbName, name, new HashMap<>());
         TTableDescriptor tTableDescriptor = new TTableDescriptor(getId(), TTableType.LAKESOUL_TABLE, schema.size(), 0,
-                getName(), dbName);
+            getName(), dbName);
         tTableDescriptor.setLakesoulTable(tLakeSoulTable);
         return tTableDescriptor;
 
@@ -88,16 +104,15 @@ public class LakeSoulExternalTable extends ExternalTable {
         try {
             schema = Schema.fromJSON(tableSchema);
         } catch (IOException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+            throw new RuntimeException(e);
         }
 
         List<Column> tmpSchema = Lists.newArrayListWithCapacity(schema.getFields().size());
         for (Field field : schema.getFields()) {
             tmpSchema.add(new Column(new Column(field.getName(), lakeSoulTypeToDorisType(field.getType()),
-                    true, null, true,
-                    field.getMetadata().containsKey("comment") ? field.getMetadata().get("comment") : null,
-                    true, schema.getFields().indexOf(field))));
+                true, null, true,
+                    field.getMetadata().getOrDefault("comment", null),
+                true, schema.getFields().indexOf(field))));
         }
         return tmpSchema;
     }
@@ -112,6 +127,10 @@ public class LakeSoulExternalTable extends ExternalTable {
 
     public Map<String, String> getHadoopProperties() {
         return catalog.getCatalogProperty().getHadoopProperties();
+    }
+
+    public String getTableIdentifier() {
+        return dbName + "." + name;
     }
 }
 

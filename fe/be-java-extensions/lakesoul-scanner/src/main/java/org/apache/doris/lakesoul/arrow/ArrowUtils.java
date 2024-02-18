@@ -37,16 +37,13 @@ public class ArrowUtils {
                 byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
                 for (int i = 0; i < 8; i++) {
                     OffHeap.putBoolean(null, address + offset, (sourceByte & 1) == 0);
-//                newBuffer.writeByte(sourceByte & 1);
                     sourceByte >>= 1;
                     offset++;
                     if (offset == valueCount) break;
                 }
             }
         } else {
-            for (int offset = 0; offset < valueCount; offset++) {
-                OffHeap.putBoolean(null, address + offset, false);
-            }
+            OffHeap.setMemory(address, (byte) 0, valueCount);
         }
         return address;
     }
@@ -161,7 +158,7 @@ public class ArrowUtils {
 
         @Override
         public String visit(ArrowType.LargeUtf8 type) {
-            return "string";
+            return "unsupported";
         }
 
         @Override
