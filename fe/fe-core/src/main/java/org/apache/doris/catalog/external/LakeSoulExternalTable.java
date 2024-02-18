@@ -23,9 +23,7 @@ import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.apache.doris.catalog.Column;
-import org.apache.doris.catalog.ScalarType;
-import org.apache.doris.catalog.Type;
+import org.apache.doris.catalog.*;
 import org.apache.doris.datasource.lakesoul.LakeSoulExternalCatalog;
 import org.apache.doris.thrift.TLakeSoulTable;
 import org.apache.doris.thrift.TTableDescriptor;
@@ -35,6 +33,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class LakeSoulExternalTable extends ExternalTable {
 
@@ -44,12 +45,15 @@ public class LakeSoulExternalTable extends ExternalTable {
         super(id, name, catalog, dbName, TableType.LAKESOUl_EXTERNAL_TABLE);
     }
 
-    private Type lakeSoulTypeToDorisType(ArrowType dt) {
+    private Type arrowFiledToDorisType(Field field) {
+        ArrowType dt = field.getType();
         if (dt instanceof ArrowType.Bool) {
             return Type.BOOLEAN;
         } else if (dt instanceof ArrowType.Int) {
             ArrowType.Int type = (ArrowType.Int) dt;
             switch (type.getBitWidth()) {
+                case 8:
+                    return Type.TINYINT;
                 case 16:
                     return Type.SMALLINT;
                 case 32:
@@ -79,7 +83,31 @@ public class LakeSoulExternalTable extends ExternalTable {
         } else if (dt instanceof ArrowType.Date) {
             return ScalarType.createDateV2Type();
         } else if (dt instanceof ArrowType.Timestamp) {
-            return ScalarType.createDatetimeV2Type(LAKESOUL_TIMESTAMP_SCALE_MS);
+            ArrowType.Timestamp tsType = (ArrowType.Timestamp) dt;
+            int scale = LAKESOUL_TIMESTAMP_SCALE_MS;
+            switch (tsType.getUnit()) {
+                case SECOND:
+                    scale = 0;
+                    break;
+                case MILLISECOND:
+                    scale = 3;
+                    break;
+                case MICROSECOND:
+                    scale = 6;
+                    break;
+                case NANOSECOND:
+                    scale = 9;
+                    break;
+            }
+            return ScalarType.createDatetimeV2Type(scale);
+        } else if (dt instanceof ArrowType.List) {
+            List<Field> children = field.getChildren();
+            checkArgument(children.size() == 1,
+                "Lists have one child Field. Found: %s", children.isEmpty() ? "none" : children);
+            return ArrayType.create(arrowFiledToDorisType(children.get(0)), children.get(0).isNullable());
+        } else if (dt instanceof ArrowType.Struct) {
+            List<Field> children = field.getChildren();
+            return new StructType(children.stream().map(this::arrowFiledToDorisType).collect(Collectors.toList()));
         }
         throw new IllegalArgumentException("Cannot transform type " + dt + " to doris type" +
             " for LakeSoul table " + getTableIdentifier());
@@ -109,7 +137,7 @@ public class LakeSoulExternalTable extends ExternalTable {
 
         List<Column> tmpSchema = Lists.newArrayListWithCapacity(schema.getFields().size());
         for (Field field : schema.getFields()) {
-            tmpSchema.add(new Column(new Column(field.getName(), lakeSoulTypeToDorisType(field.getType()),
+            tmpSchema.add(new Column(new Column(field.getName(), arrowFiledToDorisType(field),
                 true, null, true,
                     field.getMetadata().getOrDefault("comment", null),
                 true, schema.getFields().indexOf(field))));
