@@ -183,7 +183,7 @@ public class ArrowUtils {
 
         @Override
         public String visit(ArrowType.Decimal type) {
-            return "decimal";
+            return String.format("decimal(%d, %d)",type.getPrecision(), type.getScale());
         }
 
         @Override

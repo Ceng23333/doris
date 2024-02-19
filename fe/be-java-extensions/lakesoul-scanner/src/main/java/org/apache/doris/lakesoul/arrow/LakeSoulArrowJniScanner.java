@@ -47,6 +47,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     protected Schema requiredSchema;
 
     public LakeSoulArrowJniScanner() {
+        extraOffHeap = new ArrayList<>();
     }
 
     public LakeSoulArrowJniScanner(BufferAllocator allocator) {

@@ -80,11 +80,21 @@ public class LakeSoulJniScannerTest {
             "       \"name\" : \"utf8\"  " +
             "     },                 " +
             "     \"children\" : [ ]   " +
-            "   } ]                  " +
+            "   }, { " +
+            "     \"name\" : \"range1\",  " +
+            "     \"nullable\" : true, " +
+            "     \"type\" : {         " +
+            "       \"name\" : \"int\",  " +
+            "       \"bitWidth\" : 32, " +
+            "       \"isSigned\" : false" +
+            "     },                 " +
+            "     \"children\" : [ ]   " +
+            "   } " +
+            "]                  " +
             " }";
         params.put(LakeSoulUtils.SCHEMA_JSON, schema);
-        params.put(LakeSoulUtils.PARTITION_DESC, "range=range");
-        params.put(LakeSoulUtils.REQUIRED_FIELDS, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("range", "v1", "hash1", "v2", "hash2")));
+        params.put(LakeSoulUtils.PARTITION_DESC, "range=range;range1=3");
+        params.put(LakeSoulUtils.REQUIRED_FIELDS, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("range", "range1", "v1", "hash1", "v2", "hash2")));
 
         LakeSoulJniScanner scanner = new LakeSoulJniScanner(1024, params);
         scanner.open();

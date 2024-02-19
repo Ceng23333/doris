@@ -64,6 +64,7 @@ public class ArrowTest {
             Arrays.asList(
                 new Field("int",  FieldType.nullable(new ArrowType.Int(32, true)), null),
                 new Field("utf8",  FieldType.nullable(new ArrowType.Utf8()), null),
+                new Field("decimal",  FieldType.nullable(ArrowType.Decimal.createDecimal(30,10, null)), null),
                 new Field("list", FieldType.nullable(new ArrowType.List()),
                     Collections.singletonList(new Field("int", FieldType.nullable(new ArrowType.Int(32, true)), null))),
                 new Field("struct", FieldType.nullable(new ArrowType.Struct()),
@@ -173,8 +174,15 @@ public class ArrowTest {
             throw new UnsupportedOperationException(
                 String.format("Unsupported type %s.", fieldVector.getField()));
         } else if (fieldVector instanceof DecimalVector) {
-            throw new UnsupportedOperationException(
-                String.format("Unsupported type %s.", fieldVector.getField()));
+            DecimalVector vector = (DecimalVector) fieldVector;
+            vector.allocateNew(batchSize);
+            for (int i = 0; i <batchSize; i++) {
+                vector.set(i, columnIdx * 7L + i * 3L);
+                if ((i + columnIdx) % 5 == 0) {
+                    vector.setNull(i);
+                }
+            }
+            vector.setValueCount(batchSize);
 
         } else if (fieldVector instanceof DateDayVector) {
             throw new UnsupportedOperationException(
