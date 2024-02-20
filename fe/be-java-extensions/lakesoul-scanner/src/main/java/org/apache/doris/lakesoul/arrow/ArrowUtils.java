@@ -291,7 +291,7 @@ public class ArrowUtils {
 
         @Override
         public String visit(ArrowType.Decimal type) {
-            return String.format("decimalv2(%d, %d)",type.getPrecision(), type.getScale());
+            return String.format("decimal128(%d, %d)",type.getPrecision(), type.getScale());
         }
 
         @Override
