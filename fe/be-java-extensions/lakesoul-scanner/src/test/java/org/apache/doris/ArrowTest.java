@@ -71,7 +71,8 @@ public class ArrowTest {
                 new Field("decimal",  FieldType.nullable(ArrowType.Decimal.createDecimal(10,3, null)), null),
                 new Field("boolean", FieldType.nullable(new ArrowType.Bool()), null),
                 new Field("date", FieldType.nullable(new ArrowType.Date(DateUnit.DAY)), null),
-                new Field("datetime", FieldType.nullable(new ArrowType.Timestamp(TimeUnit.SECOND, ZoneId.of("UTC").toString())), null),
+                new Field("datetimeSec", FieldType.nullable(new ArrowType.Timestamp(TimeUnit.SECOND, ZoneId.of("UTC").toString())), null),
+                new Field("datetimeMilli", FieldType.nullable(new ArrowType.Timestamp(TimeUnit.MILLISECOND, ZoneId.of("UTC").toString())), null),
                 new Field("list", FieldType.nullable(new ArrowType.List()),
                     Collections.singletonList(new Field("int", FieldType.nullable(new ArrowType.Int(32, true)), null))),
                 new Field("struct", FieldType.nullable(new ArrowType.Struct()),
@@ -83,7 +84,7 @@ public class ArrowTest {
             )
         );
         VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
-        int batchSize = 16;
+        int batchSize = 20;
         root.setRowCount(batchSize);
         for (int idx=0; idx < schema.getFields().size(); idx ++) {
             setValue(allocator, root, root.getVector(idx), idx, batchSize);
@@ -217,8 +218,8 @@ public class ArrowTest {
             || fieldVector instanceof TimeNanoVector) {
             throw new UnsupportedOperationException(
                 String.format("Unsupported type %s.", fieldVector.getField()));
-        } else if (fieldVector instanceof TimeStampSecTZVector) {
-            TimeStampSecTZVector vector = (TimeStampSecTZVector) fieldVector;
+        } else if (fieldVector instanceof TimeStampVector) {
+            TimeStampVector vector = (TimeStampVector) fieldVector;
             vector.allocateNew(batchSize);
             for (int i = 0; i <batchSize; i++) {
                 vector.set(i, columnIdx * 7L + i * 3L);

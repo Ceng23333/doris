@@ -21,18 +21,110 @@ import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.doris.common.jni.utils.OffHeap;
+import org.apache.doris.common.jni.utils.TypeNativeBytes;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class ArrowUtils {
-    public static long reloadBitVectorBuffer(final ArrowBuf sourceValidityBuffer,
-                                          final int valueCount) {
+    public static long reloadTimeStampSecVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                                      final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
+            long epochSec = sourceData;
+            LocalDateTime v = LocalDateTime.ofEpochSecond(epochSec, 0, ZoneOffset.UTC);
+            OffHeap.putLong(null, address + offset,
+                TypeNativeBytes.convertToDateTimeV2(v.getYear(), v.getMonthValue(), v.getDayOfMonth(), v.getHour(),
+                v.getMinute(), v.getSecond(), v.getNano() / 1000));
+            offset +=8;
+
+        }
+        return address;
+    }
+
+    public static long reloadTimeStampMilliVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                                      final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
+            long epochSec = sourceData / 1000;
+            long nanoSec = sourceData % 1000 * 1000000;
+            LocalDateTime v = LocalDateTime.ofEpochSecond(epochSec, (int) nanoSec, ZoneOffset.UTC);
+            OffHeap.putLong(null, address + offset,
+                TypeNativeBytes.convertToDateTimeV2(v.getYear(), v.getMonthValue(), v.getDayOfMonth(), v.getHour(),
+                    v.getMinute(), v.getSecond(), v.getNano() / 1000));
+            offset +=8;
+
+        }
+        return address;
+    }
+
+    public static long reloadTimeStampMicroVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                                        final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
+            long epochSec = sourceData / 1000000;
+            long nanoSec = sourceData % 1000000 * 1000;
+            LocalDateTime v = LocalDateTime.ofEpochSecond(epochSec, (int) nanoSec, ZoneOffset.UTC);
+            OffHeap.putLong(null, address + offset,
+                TypeNativeBytes.convertToDateTimeV2(v.getYear(), v.getMonthValue(), v.getDayOfMonth(), v.getHour(),
+                    v.getMinute(), v.getSecond(), v.getNano() / 1000));
+            offset +=8;
+
+        }
+        return address;
+    }
+
+    public static long reloadTimeStampNanoVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                                       final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
+            long epochSec = sourceData / 1000000000;
+            long nanoSec = sourceData % 1000000000;
+            LocalDateTime v = LocalDateTime.ofEpochSecond(epochSec, (int) nanoSec, ZoneOffset.UTC);
+            OffHeap.putLong(null, address + offset,
+                TypeNativeBytes.convertToDateTimeV2(v.getYear(), v.getMonthValue(), v.getDayOfMonth(), v.getHour(),
+                    v.getMinute(), v.getSecond(), v.getNano() / 1000));
+            offset +=8;
+
+        }
+        return address;
+    }
+
+    public static long reloadDateDayVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                                 final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 2);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            int sourceData = sourceDataBuffer.getInt((long) sourceIdx << 2);
+
+            LocalDate v = LocalDate.ofEpochDay(sourceData);
+            OffHeap.putInt(null, address + offset,
+                TypeNativeBytes.convertToDateV2(v.getYear(), v.getMonthValue(), v.getDayOfMonth()));
+            offset += 4;
+
+        }
+        return address;
+    }
+
+
+    public static long reloadBitVectorBuffer(final ArrowBuf sourceDataBuffer,
+                                             final int valueCount) {
         long address = OffHeap.allocateMemory(valueCount);
         long offset = 0;
         for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx += 8, sourceIdx++) {
-            byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
+            byte sourceByte = sourceDataBuffer.getByte(sourceIdx);
             for (int i = 0; i < 8; i++) {
                 OffHeap.putByte(null, address + offset, (byte) (sourceByte & 1));
                 sourceByte >>= 1;
