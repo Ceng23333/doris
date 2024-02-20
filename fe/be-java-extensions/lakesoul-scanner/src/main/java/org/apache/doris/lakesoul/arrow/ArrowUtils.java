@@ -151,7 +151,7 @@ public class ArrowUtils {
                 }
             }
         } else {
-            OffHeap.setMemory(address, (byte) 0, valueCount);
+            OffHeap.setMemory(address, (byte) 1, valueCount);
         }
         return address;
     }

@@ -86,7 +86,7 @@ public class LakeSoulScanNode extends FileQueryScanNode {
 
     @Override
     protected List<String> getPathPartitionKeys() throws UserException {
-        return DBUtil.parseTableInfoPartitions(table.getPartitions()).rangeKeys;
+        return new ArrayList<>(DBUtil.parseTableInfoPartitions(table.getPartitions()).rangeKeys);
     }
 
     @Override
@@ -119,6 +119,7 @@ public class LakeSoulScanNode extends FileQueryScanNode {
         tableFormatFileDesc.setLakesoulParams(fileDesc);
         rangeDesc.setTableFormatParams(tableFormatFileDesc);
     }
+
     public static boolean isExistHashPartition(TableInfo tif) {
         JSONObject tableProperties = JSON.parseObject(tif.getProperties());
         if (tableProperties.containsKey(LakeSoulOptions.HASH_BUCKET_NUM()) &&
@@ -128,6 +129,7 @@ public class LakeSoulScanNode extends FileQueryScanNode {
             return tableProperties.containsKey(LakeSoulOptions.HASH_BUCKET_NUM());
         }
     }
+
     protected List<Split> getSplits() throws UserException {
         List<Split> splits = new ArrayList<>();
         Map<String, Map<Integer, List<String>>> splitByRangeAndHashPartition = new LinkedHashMap<>();
@@ -148,11 +150,20 @@ public class LakeSoulScanNode extends FileQueryScanNode {
         List<String> raKeys = Lists.newArrayList(table.getPartitions().split(";")[0].split(","));
 
         for (Map.Entry<String, Map<Integer, List<String>>> entry : splitByRangeAndHashPartition.entrySet()) {
+            String rangeKey = entry.getKey();
+            LinkedHashMap<String, String> rangeDesc = new LinkedHashMap<>();
+            if (!rangeKey.equals("-5")) {
+                String[] keys = rangeKey.split(",");
+                for (String item : keys) {
+                    String[] kv = item.split("=");
+                    rangeDesc.put(kv[0], kv[1]);
+                }
+            }
             for (Map.Entry<Integer, List<String>> split : entry.getValue().entrySet()) {
                 LakeSoulSplit lakeSoulSplit = new LakeSoulSplit(
                     split.getValue(),
                     pkKeys,
-                    new TreeMap<>(),
+                    rangeDesc,
                     table.getTableSchema(),
                     0, 0, 0,
                     new String[0], null);
