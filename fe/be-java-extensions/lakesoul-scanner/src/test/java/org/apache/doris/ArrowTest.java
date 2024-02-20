@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.TimeZone;
 
 public class ArrowTest {
 
