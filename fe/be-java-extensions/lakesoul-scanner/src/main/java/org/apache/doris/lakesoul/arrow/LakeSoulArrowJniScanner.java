@@ -172,9 +172,29 @@ public class LakeSoulArrowJniScanner extends JniScanner {
             OffHeap.putLong(null, metaAddress + (offset++) * 8, ((VarCharVector) valueVector).getDataBufferAddress());
 
         } else {
-            // set data buffer
-            OffHeap.putLong(null, metaAddress + (offset++) * 8, ((FieldVector) valueVector).getDataBufferAddress());
+            long addr = ((FieldVector) valueVector).getDataBufferAddress();
+            if (valueVector instanceof BitVector) {
+                addr = ArrowUtils.reloadBitVectorBuffer(valueVector.getDataBuffer(), batchSize);
+            } else if (valueVector instanceof TimeStampVector) {
+                if (valueVector instanceof TimeStampSecVector ||
+                    valueVector instanceof TimeStampSecTZVector) {
+                    addr = ArrowUtils.reloadTimeStampSecVectorBuffer(valueVector.getDataBuffer(), batchSize);
+                } else if (valueVector instanceof TimeStampMilliVector ||
+                    valueVector instanceof TimeStampMilliTZVector) {
+                    addr = ArrowUtils.reloadTimeStampMilliVectorBuffer(valueVector.getDataBuffer(), batchSize);
+                } else if (valueVector instanceof TimeStampMicroVector ||
+                    valueVector instanceof TimeStampMicroTZVector) {
+                    addr = ArrowUtils.reloadTimeStampMicroVectorBuffer(valueVector.getDataBuffer(), batchSize);
+                } else if (valueVector instanceof TimeStampNanoVector ||
+                    valueVector instanceof TimeStampNanoTZVector) {
+                    addr = ArrowUtils.reloadTimeStampNanoVectorBuffer(valueVector.getDataBuffer(), batchSize);
+                }
+            } else if (valueVector instanceof DateDayVector) {
+                addr = ArrowUtils.reloadDateDayVectorBuffer(valueVector.getDataBuffer(), batchSize);
+            }
+            OffHeap.putLong(null, metaAddress + (offset++) * 8, addr);
         }
+
         return offset;
     }
 
