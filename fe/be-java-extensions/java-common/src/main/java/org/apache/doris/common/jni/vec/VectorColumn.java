@@ -29,6 +29,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -906,7 +907,8 @@ public class VectorColumn {
     public LocalDate getDate(int rowId) {
         if (columnType.isDateV2()) {
             int date = OffHeap.getInt(null, data + rowId * 4L);
-            return TypeNativeBytes.convertToJavaDateV2(date);
+//            return TypeNativeBytes.convertToJavaDateV2(date);
+            return LocalDate.ofEpochDay(date);
         } else {
             long date = OffHeap.getLong(null, data + rowId * 8L);
             return TypeNativeBytes.convertToJavaDateV1(date);
@@ -961,7 +963,8 @@ public class VectorColumn {
     public LocalDateTime getDateTime(int rowId) {
         long time = OffHeap.getLong(null, data + rowId * 8L);
         if (columnType.isDateTimeV2()) {
-            return TypeNativeBytes.convertToJavaDateTimeV2(time);
+            return LocalDateTime.ofEpochSecond(time, 0, ZoneOffset.UTC);
+//            return TypeNativeBytes.convertToJavaDateTimeV2(time);
         } else {
             return TypeNativeBytes.convertToJavaDateTimeV1(time);
         }

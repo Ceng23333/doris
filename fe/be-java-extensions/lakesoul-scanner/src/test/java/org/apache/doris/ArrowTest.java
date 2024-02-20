@@ -28,6 +28,8 @@ import org.apache.arrow.vector.complex.impl.NullableStructWriter;
 import org.apache.arrow.vector.complex.impl.UnionListWriter;
 import org.apache.arrow.vector.complex.writer.IntWriter;
 import org.apache.arrow.vector.complex.writer.VarCharWriter;
+import org.apache.arrow.vector.types.DateUnit;
+import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
@@ -38,8 +40,10 @@ import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.TimeZone;
 
 public class ArrowTest {
 
@@ -64,7 +68,10 @@ public class ArrowTest {
             Arrays.asList(
                 new Field("int",  FieldType.nullable(new ArrowType.Int(32, true)), null),
                 new Field("utf8",  FieldType.nullable(new ArrowType.Utf8()), null),
-                new Field("decimal",  FieldType.nullable(ArrowType.Decimal.createDecimal(30,10, null)), null),
+                new Field("decimal",  FieldType.nullable(ArrowType.Decimal.createDecimal(10,3, null)), null),
+                new Field("boolean", FieldType.nullable(new ArrowType.Bool()), null),
+                new Field("date", FieldType.nullable(new ArrowType.Date(DateUnit.DAY)), null),
+                new Field("datetime", FieldType.nullable(new ArrowType.Timestamp(TimeUnit.SECOND, ZoneId.of("UTC").toString())), null),
                 new Field("list", FieldType.nullable(new ArrowType.List()),
                     Collections.singletonList(new Field("int", FieldType.nullable(new ArrowType.Int(32, true)), null))),
                 new Field("struct", FieldType.nullable(new ArrowType.Struct()),
@@ -131,7 +138,7 @@ public class ArrowTest {
             BitVector vector = (BitVector) fieldVector;
             vector.allocateNew(batchSize);
             for (int i = 0; i <batchSize; i++) {
-                vector.set(i, columnIdx * 7 + i * 3);
+                vector.set(i, (columnIdx * 7 + i * 3) & 1);
                 if ((i + columnIdx) % 5 == 0) {
                     vector.setNull(i);
                 }
@@ -185,17 +192,41 @@ public class ArrowTest {
             vector.setValueCount(batchSize);
 
         } else if (fieldVector instanceof DateDayVector) {
-            throw new UnsupportedOperationException(
-                String.format("Unsupported type %s.", fieldVector.getField()));
+            DateDayVector vector = (DateDayVector) fieldVector;
+            vector.allocateNew(batchSize);
+            for (int i = 0; i <batchSize; i++) {
+                vector.set(i, columnIdx * 7 + i * 3);
+                if ((i + columnIdx) % 5 == 0) {
+                    vector.setNull(i);
+                }
+            }
+            vector.setValueCount(batchSize);
+        }else if (fieldVector instanceof DateMilliVector) {
+            DateMilliVector vector = (DateMilliVector) fieldVector;
+            vector.allocateNew(batchSize);
+            for (int i = 0; i <batchSize; i++) {
+                vector.set(i, columnIdx * 7L + i * 3L);
+                if ((i + columnIdx) % 5 == 0) {
+                    vector.setNull(i);
+                }
+            }
+            vector.setValueCount(batchSize);
         } else if (fieldVector instanceof TimeSecVector
             || fieldVector instanceof TimeMilliVector
             || fieldVector instanceof TimeMicroVector
             || fieldVector instanceof TimeNanoVector) {
             throw new UnsupportedOperationException(
                 String.format("Unsupported type %s.", fieldVector.getField()));
-        } else if (fieldVector instanceof TimeStampVector) {
-            throw new UnsupportedOperationException(
-                String.format("Unsupported type %s.", fieldVector.getField()));
+        } else if (fieldVector instanceof TimeStampSecTZVector) {
+            TimeStampSecTZVector vector = (TimeStampSecTZVector) fieldVector;
+            vector.allocateNew(batchSize);
+            for (int i = 0; i <batchSize; i++) {
+                vector.set(i, columnIdx * 7L + i * 3L);
+                if ((i + columnIdx) % 5 == 0) {
+                    vector.setNull(i);
+                }
+            }
+            vector.setValueCount(batchSize);
 
         } else if (fieldVector instanceof MapVector) {
             throw new UnsupportedOperationException(

@@ -173,7 +173,12 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
         } else {
             // set data buffer
-            OffHeap.putLong(null, metaAddress + (offset++) * 8, ((FieldVector) valueVector).getDataBufferAddress());
+            if (valueVector instanceof BitVector) {
+                long addr = ArrowUtils.reloadBitVectorBuffer(valueVector.getDataBuffer(), batchSize);
+                OffHeap.putLong(null, metaAddress + (offset++) * 8, addr);
+            } else {
+                OffHeap.putLong(null, metaAddress + (offset++) * 8, ((FieldVector) valueVector).getDataBufferAddress());
+            }
         }
         return offset;
     }

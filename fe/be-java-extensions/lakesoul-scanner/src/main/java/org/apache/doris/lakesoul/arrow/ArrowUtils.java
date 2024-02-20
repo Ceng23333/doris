@@ -27,6 +27,22 @@ import java.util.List;
 import static org.apache.arrow.util.Preconditions.checkArgument;
 
 public class ArrowUtils {
+    public static long reloadBitVectorBuffer(final ArrowBuf sourceValidityBuffer,
+                                          final int valueCount) {
+        long address = OffHeap.allocateMemory(valueCount);
+        long offset = 0;
+        for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx += 8, sourceIdx++) {
+            byte sourceByte = sourceValidityBuffer.getByte(sourceIdx);
+            for (int i = 0; i < 8; i++) {
+                OffHeap.putByte(null, address + offset, (byte) (sourceByte & 1));
+                sourceByte >>= 1;
+                offset++;
+                if (offset == valueCount) break;
+            }
+        }
+        return address;
+    }
+
     public static long loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
                                           final int valueCount,
                                           final boolean nullable) {
@@ -183,12 +199,12 @@ public class ArrowUtils {
 
         @Override
         public String visit(ArrowType.Decimal type) {
-            return String.format("decimal(%d, %d)",type.getPrecision(), type.getScale());
+            return String.format("decimalv2(%d, %d)",type.getPrecision(), type.getScale());
         }
 
         @Override
         public String visit(ArrowType.Date type) {
-            return "datev1";
+            return "datev2";
         }
 
         @Override
@@ -226,7 +242,7 @@ public class ArrowUtils {
                 case NANOSECOND:
                     precision = 9;
             }
-            return "timestamp";
+            return String.format("timestamp(%d)", precision);
         }
 
         @Override
