@@ -84,13 +84,6 @@ public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
 
         nativeIOReader.setSchema(requiredSchema);
 
-        for (String partitionKV : params.getOrDefault(PARTITION_DESC, "").split(LIST_DELIM)) {
-            if (partitionKV.isEmpty()) break;
-            String[] kv = partitionKV.split(PARTITIONS_KV_DELIM);
-            Preconditions.checkArgument(kv.length == 2, "Invalid partition column = " + partitionKV);
-            nativeIOReader.setDefaultColumnValue(kv[0], kv[1]);
-        }
-
         initTableInfo(params);
 
         nativeIOReader.initializeReader();

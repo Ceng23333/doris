@@ -80,7 +80,7 @@ public class LakeSoulExternalTable extends ExternalTable {
             return Type.STRING;
         } else if (dt instanceof ArrowType.Decimal) {
             ArrowType.Decimal decimalType = (ArrowType.Decimal) dt;
-            return ScalarType.createDecimalV3Type(decimalType.getPrecision(), decimalType.getScale());
+            return ScalarType.createDecimalType(PrimitiveType.DECIMAL128, decimalType.getPrecision(), decimalType.getScale());
         } else if (dt instanceof ArrowType.Date) {
             return ScalarType.createDateV2Type();
         } else if (dt instanceof ArrowType.Timestamp) {
