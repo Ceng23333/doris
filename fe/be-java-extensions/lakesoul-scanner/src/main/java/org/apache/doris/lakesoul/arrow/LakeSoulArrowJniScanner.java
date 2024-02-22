@@ -215,7 +215,7 @@ public class LakeSoulArrowJniScanner extends JniScanner {
             OffHeap.freeMemory(metaAddress);
             metaAddress = 0;
         }
-        for (long address:extraOffHeap) {
+        for (long address : extraOffHeap) {
             OffHeap.freeMemory(address);
         }
         extraOffHeap.clear();
