@@ -207,7 +207,16 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
+        if (metaAddress != 0) {
+            OffHeap.freeMemory(metaAddress);
+            metaAddress = 0;
+        }
+        for (long address:extraOffHeap) {
+            OffHeap.freeMemory(address);
+        }
+        extraOffHeap.clear();
+        vectorTable = null;
 
     }
 
@@ -218,14 +227,6 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     @Override
     public void releaseTable() {
-        if (metaAddress != 0) {
-            OffHeap.freeMemory(metaAddress);
-            metaAddress = 0;
-        }
-        for (long address:extraOffHeap) {
-            OffHeap.freeMemory(address);
-        }
-        extraOffHeap.clear();
-        vectorTable = null;
+
     }
 }
