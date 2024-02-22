@@ -118,7 +118,7 @@ public class LakeSoulExternalTable extends ExternalTable {
     public TTableDescriptor toThrift() {
         List<Column> schema = getFullSchema();
         TLakeSoulTable tLakeSoulTable = new TLakeSoulTable(dbName, name, new HashMap<>());
-        TTableDescriptor tTableDescriptor = new TTableDescriptor(getId(), TTableType.LAKESOUL_TABLE, schema.size(), 0,
+        TTableDescriptor tTableDescriptor = new TTableDescriptor(getId(), TTableType.HIVE_TABLE, schema.size(), 0,
             getName(), dbName);
         tTableDescriptor.setLakesoulTable(tLakeSoulTable);
         return tTableDescriptor;

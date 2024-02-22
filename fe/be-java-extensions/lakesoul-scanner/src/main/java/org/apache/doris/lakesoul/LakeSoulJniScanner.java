@@ -19,11 +19,9 @@ package org.apache.doris.lakesoul;
 
 import com.dmetasoul.lakesoul.LakeSoulArrowReader;
 import com.dmetasoul.lakesoul.lakesoul.io.NativeIOReader;
-import com.google.common.base.Preconditions;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.apache.doris.common.jni.vec.ScanPredicate;
 import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
 
 import java.io.IOException;

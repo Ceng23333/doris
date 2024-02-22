@@ -41,8 +41,8 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     protected static final Logger LOG = Logger.getLogger(LakeSoulArrowJniScanner.class);
 
     protected BufferAllocator allocator;
-    private long  metaAddress = 0;
-    private ArrayList<Long> extraOffHeap;
+    private long metaAddress = 0;
+    private ArrayList<Long> extraOffHeap = new ArrayList<>();
 
     protected Schema requiredSchema;
 
@@ -52,7 +52,6 @@ public class LakeSoulArrowJniScanner extends JniScanner {
 
     public LakeSoulArrowJniScanner(BufferAllocator allocator) {
         metaAddress = 0;
-        extraOffHeap = new ArrayList<>();
         withAllocator(allocator);
     }
 
@@ -93,7 +92,8 @@ public class LakeSoulArrowJniScanner extends JniScanner {
         ColumnType[] columnTypes = new ColumnType[fields.size()];
         String[] requiredFields = new String[fields.size()];
         for (int i = 0; i < fields.size(); i++) {
-            columnTypes[i] = ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
+            columnTypes[i] =
+                ColumnType.parseType(fields.get(i).getName(), ArrowUtils.hiveTypeFromArrowField(fields.get(i)));
             requiredFields[i] = fields.get(i).getName();
         }
         ScanPredicate[] predicates = new ScanPredicate[0];
@@ -133,7 +133,10 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     private Integer fillMetaAddressVector(int batchSize, ColumnType columnType, long metaAddress, Integer offset,
                                           ValueVector valueVector) {
         // nullMap
-        long validityBuffer = ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize, valueVector.getField().isNullable());
+        long
+            validityBuffer =
+            ArrowUtils.loadValidityBuffer(valueVector.getValidityBuffer(), batchSize,
+                valueVector.getField().isNullable());
         extraOffHeap.add(validityBuffer);
         OffHeap.putLong(null, metaAddress + (offset++) * 8, validityBuffer);
 
@@ -217,12 +220,19 @@ public class LakeSoulArrowJniScanner extends JniScanner {
     }
 
     @Override
+    protected void releaseColumn(int fieldId) {
+        // do not release column here
+        // arrow recordbatch memory will be released in getNext and close
+        // extra off heap memory will be released in releaseTable
+    }
+
+    @Override
     public void releaseTable() {
         if (metaAddress != 0) {
             OffHeap.freeMemory(metaAddress);
             metaAddress = 0;
         }
-        for (long address:extraOffHeap) {
+        for (long address : extraOffHeap) {
             OffHeap.freeMemory(address);
         }
         extraOffHeap.clear();

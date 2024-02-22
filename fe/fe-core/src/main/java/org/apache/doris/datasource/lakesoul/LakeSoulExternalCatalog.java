@@ -36,18 +36,18 @@ public class LakeSoulExternalCatalog extends ExternalCatalog {
 
     private static final Logger LOG = LogManager.getLogger(LakeSoulExternalCatalog.class);
 
-    private final DBManager dbManager;
+    private DBManager dbManager = new DBManager();
 
     public LakeSoulExternalCatalog(long catalogId, String name, String resource, Map<String, String> props,
             String comment) {
         super(catalogId, name, InitCatalogLog.Type.LAKESOUL, comment);
         props = PropertyConverter.convertToMetaProperties(props);
-        dbManager = new DBManager();
         catalogProperty = new CatalogProperty(resource, props);
     }
 
     @Override
     protected List<String> listDatabaseNames() {
+        makeSureInitialized();
         return dbManager.listNamespaces();
     }
 
@@ -64,6 +64,7 @@ public class LakeSoulExternalCatalog extends ExternalCatalog {
 
     @Override
     public boolean tableExist(SessionContext ctx, String dbName, String tblName) {
+        makeSureInitialized();
         TableInfo tableInfo =
                 dbManager.getTableInfoByNameAndNamespace(dbName, tblName);
 
@@ -72,7 +73,9 @@ public class LakeSoulExternalCatalog extends ExternalCatalog {
 
     @Override
     protected void initLocalObjectsImpl() {
-
+        if (dbManager == null) {
+            dbManager = new DBManager();
+        }
     }
 
     public TableInfo getLakeSoulTable(String dbName, String tblName) {
