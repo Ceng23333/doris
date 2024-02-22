@@ -191,6 +191,8 @@ public class LakeSoulArrowJniScanner extends JniScanner {
                 }
             } else if (valueVector instanceof DateDayVector) {
                 addr = ArrowUtils.reloadDateDayVectorBuffer(valueVector.getDataBuffer(), batchSize);
+            } else if (valueVector instanceof DecimalVector) {
+                addr = ArrowUtils.reloadDecimal128Buffer(valueVector.getDataBuffer(), batchSize);
             }
             OffHeap.putLong(null, metaAddress + (offset++) * 8, addr);
         }

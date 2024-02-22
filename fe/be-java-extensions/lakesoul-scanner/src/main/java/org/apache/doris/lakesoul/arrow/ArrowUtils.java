@@ -102,6 +102,19 @@ public class ArrowUtils {
         return address;
     }
 
+    public static long reloadDecimal128Buffer(final ArrowBuf sourceDataBuffer,
+                                                       final int valueCount) {
+        long address = OffHeap.allocateMemory((long) valueCount << 3 + 1);
+        long offset = 0;
+        for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
+            long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 4);
+            OffHeap.putLong(null, address + offset, sourceData);
+            offset +=8;
+
+        }
+        return address;
+    }
+
     public static long reloadDateDayVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                  final int valueCount) {
         long address = OffHeap.allocateMemory((long) valueCount << 2 + 1);
@@ -291,7 +304,7 @@ public class ArrowUtils {
 
         @Override
         public String visit(ArrowType.Decimal type) {
-            return String.format("decimal128(%d, %d)",type.getPrecision(), type.getScale());
+            return String.format("decimal64(%d, %d)",type.getPrecision(), type.getScale());
         }
 
         @Override
