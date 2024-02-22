@@ -138,7 +138,7 @@ public class ArrowUtils {
     public static long loadValidityBuffer(final ArrowBuf sourceValidityBuffer,
                                           final int valueCount,
                                           final boolean nullable) {
-        long address = OffHeap.allocateMemory(valueCount);
+        long address = OffHeap.allocateMemory(valueCount + 1);
         if (nullable) {
             long offset = 0;
             for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx += 8, sourceIdx++) {
