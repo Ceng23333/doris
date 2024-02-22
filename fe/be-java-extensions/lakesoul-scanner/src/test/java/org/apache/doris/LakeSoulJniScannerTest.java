@@ -33,68 +33,94 @@ public class LakeSoulJniScannerTest {
         OffHeap.setTesting();
         HashMap<String, String> params = new HashMap<>();
         params.put(LakeSoulUtils.FILE_NAMES, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList(
-            "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-1c90ae74-e3a4-42b6-8f96-d4bbae715afb_00000.c000.parquet",
-            "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-50a130a4-332a-4688-9929-38347d507ef8_00000.c000.parquet",
-            "/Users/ceng/Desktop/lakesoul_table/range=range/part-00000-81f69370-6318-4403-bd3b-ffebb651298e_00000.c000.parquet"
+            "/Users/ceng/Desktop/lakesoul_table/part-00000-320f2612-7f95-40f0-8f63-3f3a50b5d1a8-c000.parquet",
+            "/Users/ceng/Desktop/lakesoul_table/part-00001-ef4578c0-37b3-483c-832a-72ff0a83acd7-c000.parquet"
         )));
         params.put(
             LakeSoulUtils.PRIMARY_KEYS,
-            String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("hash1", "hash2"))
+            String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList())
         );
 
-        String schema = " {                      " +
-            "   \"fields\" : [ {       " +
-            "     \"name\" : \"range\",  " +
-            "     \"nullable\" : true, " +
-            "     \"type\" : {         " +
-            "       \"name\" : \"utf8\"  " +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   }, {                 " +
-            "     \"name\" : \"v1\",     " +
-            "     \"nullable\" : true, " +
-            "     \"type\" : {         " +
-            "       \"name\" : \"utf8\"  " +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   }, {                 " +
-            "     \"name\" : \"hash1\",  " +
-            "     \"nullable\" : false," +
-            "     \"type\" : {         " +
-            "       \"name\" : \"int\",  " +
-            "       \"bitWidth\" : 32, " +
-            "       \"isSigned\" : true" +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   }, {                 " +
-            "     \"name\" : \"v2\",     " +
-            "     \"nullable\" : true, " +
-            "     \"type\" : {         " +
-            "       \"name\" : \"utf8\"  " +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   }, {                 " +
-            "     \"name\" : \"hash2\",  " +
-            "     \"nullable\" : false," +
-            "     \"type\" : {         " +
-            "       \"name\" : \"utf8\"  " +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   }, { " +
-            "     \"name\" : \"range1\",  " +
-            "     \"nullable\" : true, " +
-            "     \"type\" : {         " +
-            "       \"name\" : \"int\",  " +
-            "       \"bitWidth\" : 32, " +
-            "       \"isSigned\" : false" +
-            "     },                 " +
-            "     \"children\" : [ ]   " +
-            "   } " +
-            "]                  " +
-            " }";
+        String schema = "{\n" +
+            "  \"fields\" : [ {\n" +
+            "    \"name\" : \"name\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"utf8\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"age\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"int\",\n" +
+            "      \"bitWidth\" : 32,\n" +
+            "      \"isSigned\" : true\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"birth\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"date\",\n" +
+            "      \"unit\" : \"DAY\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"grad\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"bool\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"num\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"int\",\n" +
+            "      \"bitWidth\" : 64,\n" +
+            "      \"isSigned\" : true\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"sal\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"floatingpoint\",\n" +
+            "      \"precision\" : \"DOUBLE\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"birthstamp\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"timestamp\",\n" +
+            "      \"unit\" : \"MICROSECOND\",\n" +
+            "      \"timezone\" : \"UTC\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"decmal\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"decimal\",\n" +
+            "      \"precision\" : 10,\n" +
+            "      \"scale\" : 3,\n" +
+            "      \"bitWidth\" : 128\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  }, {\n" +
+            "    \"name\" : \"namevar\",\n" +
+            "    \"nullable\" : true,\n" +
+            "    \"type\" : {\n" +
+            "      \"name\" : \"utf8\"\n" +
+            "    },\n" +
+            "    \"children\" : [ ]\n" +
+            "  } ]\n" +
+            "}";
         params.put(LakeSoulUtils.SCHEMA_JSON, schema);
-        params.put(LakeSoulUtils.PARTITION_DESC, "range=range;range1=3");
-        params.put(LakeSoulUtils.REQUIRED_FIELDS, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("range", "range1", "v1", "hash1", "v2", "hash2")));
+//        params.put(LakeSoulUtils.PARTITION_DESC, "range=range");
+        params.put(LakeSoulUtils.REQUIRED_FIELDS, String.join(LakeSoulUtils.LIST_DELIM, Arrays.asList("name", "age", "birth", "grad", "num", "sal", "birthstamp", "decmal", "namevar")));
 
         LakeSoulJniScanner scanner = new LakeSoulJniScanner(1024, params);
         scanner.open();
