@@ -33,7 +33,7 @@ import static org.apache.arrow.util.Preconditions.checkArgument;
 public class ArrowUtils {
     public static long reloadTimeStampSecVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                       final int valueCount) {
-        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long address = OffHeap.allocateMemory((long) valueCount << 3 + 1);
         long offset = 0;
         for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
             long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
@@ -50,7 +50,7 @@ public class ArrowUtils {
 
     public static long reloadTimeStampMilliVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                       final int valueCount) {
-        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long address = OffHeap.allocateMemory((long) valueCount << 3 + 1);
         long offset = 0;
         for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
             long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
@@ -68,7 +68,7 @@ public class ArrowUtils {
 
     public static long reloadTimeStampMicroVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                         final int valueCount) {
-        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long address = OffHeap.allocateMemory((long) valueCount << 3 + 1);
         long offset = 0;
         for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
             long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
@@ -86,7 +86,7 @@ public class ArrowUtils {
 
     public static long reloadTimeStampNanoVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                        final int valueCount) {
-        long address = OffHeap.allocateMemory((long) valueCount << 3);
+        long address = OffHeap.allocateMemory((long) valueCount << 3 + 1);
         long offset = 0;
         for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
             long sourceData = sourceDataBuffer.getLong((long) sourceIdx << 3);
@@ -104,7 +104,7 @@ public class ArrowUtils {
 
     public static long reloadDateDayVectorBuffer(final ArrowBuf sourceDataBuffer,
                                                  final int valueCount) {
-        long address = OffHeap.allocateMemory((long) valueCount << 2);
+        long address = OffHeap.allocateMemory((long) valueCount << 2 + 1);
         long offset = 0;
         for (int sourceIdx = 0; sourceIdx < valueCount; sourceIdx++) {
             int sourceData = sourceDataBuffer.getInt((long) sourceIdx << 2);
@@ -121,7 +121,7 @@ public class ArrowUtils {
 
     public static long reloadBitVectorBuffer(final ArrowBuf sourceDataBuffer,
                                              final int valueCount) {
-        long address = OffHeap.allocateMemory(valueCount);
+        long address = OffHeap.allocateMemory(valueCount  + 1);
         long offset = 0;
         for (int newIdx = 0, sourceIdx = 0; newIdx < valueCount; newIdx += 8, sourceIdx++) {
             byte sourceByte = sourceDataBuffer.getByte(sourceIdx);
