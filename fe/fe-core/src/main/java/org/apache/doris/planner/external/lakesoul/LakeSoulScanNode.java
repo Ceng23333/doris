@@ -146,8 +146,10 @@ public class LakeSoulScanNode extends FileQueryScanNode {
                     .add(pif.path());
             }
         }
-        List<String> pkKeys = Lists.newArrayList(table.getPartitions().split(";")[1].split(","));
-        List<String> raKeys = Lists.newArrayList(table.getPartitions().split(";")[0].split(","));
+        List<String> pkKeys = null;
+        if(!table.getPartitions().equals(";")){
+            pkKeys = Lists.newArrayList(table.getPartitions().split(";")[1].split(","));
+        }
 
         for (Map.Entry<String, Map<Integer, List<String>>> entry : splitByRangeAndHashPartition.entrySet()) {
             String rangeKey = entry.getKey();
