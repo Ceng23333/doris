@@ -17,6 +17,8 @@
 
 package org.apache.doris.planner.external.lakesoul;
 
+import com.dmetasoul.lakesoul.meta.jnr.SplitDesc;
+
 import org.apache.doris.planner.external.FileSplit;
 
 import lombok.Data;
@@ -28,15 +30,25 @@ import java.util.Map;
 @Data
 public class LakeSoulSplit extends FileSplit {
 
+
+    public LakeSoulSplit(SplitDesc splitDesc, long start, long length, long fileLength, String[] hosts, List<String> partitionValues) {
+        super(new Path(splitDesc.getFilePaths().get(0)), start, length, fileLength, hosts, partitionValues);
+        this.paths = splitDesc.getFilePaths();
+        this.primaryKeys = splitDesc.getPrimaryKeys();
+        this.partitionDesc = splitDesc.getPartitionDesc();
+        this.tableSchema = splitDesc.getTableSchema();
+
+    }
+
     public LakeSoulSplit(List<String> paths,
-            List<String> primaryKeys,
-            Map<String, String> partitionDesc,
-            String tableSchema,
-            long start,
-            long length,
-            long fileLength,
-            String[] hosts,
-            List<String> partitionValues) {
+                         List<String> primaryKeys,
+                         Map<String, String> partitionDesc,
+                         String tableSchema,
+                         long start,
+                         long length,
+                         long fileLength,
+                         String[] hosts,
+                         List<String> partitionValues) {
         super(new Path(paths.get(0)), start, length, fileLength, hosts, partitionValues);
         this.paths = paths;
         this.primaryKeys = primaryKeys;
