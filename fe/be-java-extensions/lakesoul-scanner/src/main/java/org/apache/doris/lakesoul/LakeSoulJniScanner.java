@@ -22,7 +22,9 @@ import com.dmetasoul.lakesoul.lakesoul.io.NativeIOReader;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.doris.common.jni.vec.ScanPredicate;
 import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
+import org.apache.doris.lakesoul.parquet.ParquetFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -83,6 +85,10 @@ public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
         nativeIOReader.setSchema(requiredSchema);
 
         initTableInfo(params);
+
+        for (ScanPredicate predicate : predicates) {
+            nativeIOReader.addFilter(ParquetFilter.toParquetFilter(predicate).toString());
+        }
 
         nativeIOReader.initializeReader();
         lakesoulArrowReader = new LakeSoulArrowReader(nativeIOReader, awaitTimeout);
