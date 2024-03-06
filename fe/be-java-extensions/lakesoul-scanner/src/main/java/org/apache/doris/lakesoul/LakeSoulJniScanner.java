@@ -19,6 +19,7 @@ package org.apache.doris.lakesoul;
 
 import com.dmetasoul.lakesoul.LakeSoulArrowReader;
 import com.dmetasoul.lakesoul.lakesoul.io.NativeIOReader;
+import com.google.common.base.Preconditions;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -27,10 +28,7 @@ import org.apache.doris.lakesoul.arrow.LakeSoulArrowJniScanner;
 import org.apache.doris.lakesoul.parquet.ParquetFilter;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.doris.lakesoul.LakeSoulUtils.*;
@@ -84,10 +82,20 @@ public class LakeSoulJniScanner extends LakeSoulArrowJniScanner {
 
         nativeIOReader.setSchema(requiredSchema);
 
+        HashSet<String> partitionColumn = new HashSet<>();
+        for (String partitionKV:params.getOrDefault(PARTITION_DESC, "").split(LIST_DELIM)) {
+            if (partitionKV.isEmpty()) break;
+            String[] kv = partitionKV.split(PARTITIONS_KV_DELIM);
+            Preconditions.checkArgument(kv.length == 2, "Invalid partition column = " + partitionKV);
+            partitionColumn.add(kv[0]);
+        }
+
         initTableInfo(params);
 
         for (ScanPredicate predicate : predicates) {
-            nativeIOReader.addFilter(ParquetFilter.toParquetFilter(predicate).toString());
+            if (!partitionColumn.contains(predicate.columName)) {
+                nativeIOReader.addFilter(ParquetFilter.toParquetFilter(predicate).toString());
+            }
         }
 
         nativeIOReader.initializeReader();

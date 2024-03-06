@@ -129,7 +129,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("Unknown type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
     }
 
@@ -173,7 +173,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("Unknown type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
     }
 
@@ -216,7 +216,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("Unknown type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
 
     }
@@ -260,7 +260,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("NotSupport type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
 
     }
@@ -304,7 +304,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("NotSupport type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
 
     }
@@ -348,7 +348,7 @@ public class ParquetFilter {
             case MAP:
             case STRUCT:
             default:
-                throw new RuntimeException("NotSupport type value: " + type);
+                throw new RuntimeException("Unsupported push_down_filter type value: " + type);
         }
 
     }
