@@ -481,6 +481,7 @@ if [[ "${BUILD_BE_JAVA_EXTENSIONS}" -eq 1 ]]; then
     modules+=("be-java-extensions/trino-connector-scanner")
     modules+=("be-java-extensions/max-compute-scanner")
     modules+=("be-java-extensions/avro-scanner")
+    modules+=("be-java-extensions/lakesoul-scanner")
     modules+=("be-java-extensions/preload-extensions")
 fi
 FE_MODULES="$(
@@ -755,6 +756,7 @@ EOF
     extensions_modules+=("trino-connector-scanner")
     extensions_modules+=("max-compute-scanner")
     extensions_modules+=("avro-scanner")
+    extensions_modules+=("lakesoul-scanner")
     extensions_modules+=("preload-extensions")
 
     BE_JAVA_EXTENSIONS_DIR="${DORIS_OUTPUT}/be/lib/java_extensions/"
