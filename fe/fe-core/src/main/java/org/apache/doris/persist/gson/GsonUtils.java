@@ -79,9 +79,11 @@ import org.apache.doris.datasource.iceberg.IcebergRestExternalCatalog;
 import org.apache.doris.datasource.infoschema.ExternalInfoSchemaDatabase;
 import org.apache.doris.datasource.infoschema.ExternalInfoSchemaTable;
 import org.apache.doris.datasource.jdbc.JdbcExternalCatalog;
-import org.apache.doris.datasource.lakesoul.LakeSoulExternalCatalog;
 import org.apache.doris.datasource.jdbc.JdbcExternalDatabase;
 import org.apache.doris.datasource.jdbc.JdbcExternalTable;
+import org.apache.doris.datasource.lakesoul.LakeSoulExternalCatalog;
+import org.apache.doris.datasource.lakesoul.LakeSoulExternalDatabase;
+import org.apache.doris.datasource.lakesoul.LakeSoulExternalTable;
 import org.apache.doris.datasource.maxcompute.MaxComputeExternalCatalog;
 import org.apache.doris.datasource.maxcompute.MaxComputeExternalDatabase;
 import org.apache.doris.datasource.maxcompute.MaxComputeExternalTable;
@@ -276,8 +278,8 @@ public class GsonUtils {
             .registerSubtype(HMSExternalDatabase.class, HMSExternalDatabase.class.getSimpleName())
             .registerSubtype(JdbcExternalDatabase.class, JdbcExternalDatabase.class.getSimpleName())
             .registerSubtype(IcebergExternalDatabase.class, IcebergExternalDatabase.class.getSimpleName())
-        .registerSubtype(LakeSoulExternalDatabase.class, LakeSoulExternalDatabase.class.getSimpleName())
-        .registerSubtype(PaimonExternalDatabase.class, PaimonExternalDatabase.class.getSimpleName())
+            .registerSubtype(LakeSoulExternalDatabase.class, LakeSoulExternalDatabase.class.getSimpleName())
+            .registerSubtype(PaimonExternalDatabase.class, PaimonExternalDatabase.class.getSimpleName())
             .registerSubtype(MaxComputeExternalDatabase.class, MaxComputeExternalDatabase.class.getSimpleName())
             .registerSubtype(ExternalInfoSchemaDatabase.class, ExternalInfoSchemaDatabase.class.getSimpleName())
             .registerSubtype(TrinoConnectorExternalDatabase.class, TrinoConnectorExternalDatabase.class.getSimpleName())
@@ -290,8 +292,8 @@ public class GsonUtils {
             .registerSubtype(HMSExternalTable.class, HMSExternalTable.class.getSimpleName())
             .registerSubtype(JdbcExternalTable.class, JdbcExternalTable.class.getSimpleName())
             .registerSubtype(IcebergExternalTable.class, IcebergExternalTable.class.getSimpleName())
-        .registerSubtype(LakeSoulExternalTable.class, LakeSoulExternalTable.class.getSimpleName())
-        .registerSubtype(PaimonExternalTable.class, PaimonExternalTable.class.getSimpleName())
+            .registerSubtype(LakeSoulExternalTable.class, LakeSoulExternalTable.class.getSimpleName())
+            .registerSubtype(PaimonExternalTable.class, PaimonExternalTable.class.getSimpleName())
             .registerSubtype(MaxComputeExternalTable.class, MaxComputeExternalTable.class.getSimpleName())
             .registerSubtype(ExternalInfoSchemaTable.class, ExternalInfoSchemaTable.class.getSimpleName())
             .registerSubtype(TrinoConnectorExternalTable.class, TrinoConnectorExternalTable.class.getSimpleName())
